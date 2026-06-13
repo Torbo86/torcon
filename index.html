@@ -34,6 +34,10 @@
   .brand h1{font-family:var(--serif);font-size:24px;font-weight:600;margin:0;letter-spacing:.2px}
   .brand .ver{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
   .brand .sub{margin-left:auto;font-size:12px;color:var(--muted)}
+  .brand-home{background:none;border:none;padding:0;display:flex;align-items:baseline;gap:8px;cursor:pointer}
+  .bh-title{font-family:var(--serif);font-size:24px;font-weight:600;color:var(--ink);letter-spacing:.2px}
+  .nav-brand{margin-left:auto;background:none;border:none;font-family:var(--serif);font-size:18px;
+    font-weight:600;color:var(--muted);cursor:pointer;padding:4px 2px}
   .search{margin-top:12px;width:100%;border:1px solid var(--line);background:var(--surface);
     border-radius:11px;padding:11px 13px;font-size:15px;font-family:var(--sans);color:var(--ink)}
   .search:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
@@ -160,6 +164,17 @@
   .crop-controls input[type=range]{width:100%}
   .crop-hint{text-align:center;font-size:12.5px;color:#bdb6ad;margin-top:8px}
   .crop-bar{display:flex;gap:10px;padding:14px 18px calc(18px + env(safe-area-inset-bottom))}
+  .me-toggle{display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 13px;
+    background:#f0ece5;border:1px solid var(--line);border-radius:11px;font-size:14.5px;font-weight:500;cursor:pointer}
+  .me-toggle input{width:auto}
+  .me-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    color:#fff;background:var(--accent);border-radius:999px;padding:2px 8px;margin-left:9px;vertical-align:2px}
+  .gfilter{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;-webkit-overflow-scrolling:touch}
+  .gchip{flex:0 0 auto;background:var(--surface);border:1px solid var(--line);border-radius:999px;
+    padding:7px 14px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+  .gchip.on{background:var(--ink);color:#fff;border-color:transparent}
+  .chip-group{font-weight:600;color:var(--kol)}
+  .seg-groups button.on{background:var(--kol);color:#fff;border-color:transparent}
   .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:var(--ink);
     color:#fff;padding:11px 18px;border-radius:11px;font-size:14px;z-index:60;
     box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%}
@@ -172,9 +187,12 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.5";
+const VERSION = "1.8";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.8", d:"Eine Person als „Ich“ markierbar (Mittelpunkt). Gruppen wie Familie oder Freundeskreis anlegen, zuordnen und nach ihnen filtern."},
+  {v:"1.7", d:"Funktion meint die Rolle für dich (z.B. mein Vater). Suche findet jetzt auch Verbindungen nach Typ und verbundenem Namen."},
+  {v:"1.6", d:"Beruf heißt jetzt Funktion und steht als Titel unter dem Namen. Tippen auf Torcon führt zur Startseite."},
   {v:"1.5", d:"Bilder zuschneiden vor dem Hinzufügen und später erneut, geheime Felder per langem Druck auf das Foto."},
   {v:"1.4", d:"Versionshistorie ausklappbar, Hinweis wenn eine neue Version zum Laden bereitsteht."},
   {v:"1.3", d:"Beruf als eigenes Feld, wird auch durchsucht."},
@@ -188,16 +206,17 @@ const REL_TYPES = ["Familie","Freund","Partner","Kollege","Sonstige"];
 function loadStore(){
   try{
     const raw = localStorage.getItem(STORE_KEY);
-    if(!raw) return {people:[], ideas:[]};
+    if(!raw) return {people:[], ideas:[], groups:[]};
     const data = JSON.parse(raw);
     return {
       people: Array.isArray(data.people) ? data.people : [],
       ideas: Array.isArray(data.ideas) ? data.ideas : [],
+      groups: Array.isArray(data.groups) ? data.groups : [],
     };
-  }catch(e){ return {people:[], ideas:[]}; }
+  }catch(e){ return {people:[], ideas:[], groups:[]}; }
 }
-function saveStore(people, ideas){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify({version:VERSION, people, ideas})); }
+function saveStore(people, ideas, groups){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify({version:VERSION, people, ideas, groups})); }
   catch(e){ alert("Speichern fehlgeschlagen. Eventuell ist der Speicher voll (zu viele oder zu große Bilder)."); }
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -274,18 +293,21 @@ function AvaSm({person}){
 }
 
 /* ---------- list / Kartei ---------- */
-function Kartei({people,onOpen,onAdd,onSettings,today}){
+function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onSettings}){
   const [q,setQ]=useState("");
+  const groupName = groupFilter ? (groups.find(g=>g.id===groupFilter)||{}).name : null;
   const sorted = useMemo(()=>[...people].sort((a,b)=>a.name.localeCompare(b.name,"de")),[people]);
   const filtered = useMemo(()=>{
+    let base = groupFilter ? sorted.filter(p=>(p.groups||[]).includes(groupFilter)) : sorted;
     const t=q.trim().toLowerCase();
-    if(!t) return sorted;
-    return sorted.filter(p=>{
+    if(!t) return base;
+    return base.filter(p=>{
       const custom=(p.custom||[]).map(c=>(c.label||"")+" "+(c.value||"")).join(" ");
-      const hay=[p.name,p.job,p.gifts,p.notes,p.metWhere,p.color,custom].join(" ").toLowerCase();
+      const conns=(p.connections||[]).map(c=>{ const o=people.find(x=>x.id===c.personId); return c.type+" "+(o?o.name:""); }).join(" ");
+      const hay=[p.name,p.job,p.gifts,p.notes,p.metWhere,p.color,custom,conns].join(" ").toLowerCase();
       return hay.includes(t);
     });
-  },[sorted,q]);
+  },[sorted,q,people,groupFilter]);
 
   const upcoming = useMemo(()=>{
     return people.map(p=>({p,nb:nextBirthday(parseBday(p.birthday),today)}))
@@ -293,18 +315,51 @@ function Kartei({people,onOpen,onAdd,onSettings,today}){
       .sort((a,b)=>a.nb.days-b.nb.days);
   },[people,today]);
 
+  const me = people.find(p=>p.isMe);
+  const pinMe = me && !q && !groupFilter;
+  const listed = pinMe ? filtered.filter(p=>p.id!==me.id) : filtered;
+
+  const renderCard = (p, extraKey) => {
+    const pb=parseBday(p.birthday); const age=currentAge(pb,today);
+    const metaParts=[];
+    if(p.job&&p.job.trim()) metaParts.push(p.job);
+    if(pb) metaParts.push(fmtBday(pb)+(age!=null?` · ${age}`:""));
+    if((p.connections||[]).length) metaParts.push(`${p.connections.length} Verb.`);
+    return (
+      <div className="card" key={(extraKey||"")+p.id} onClick={()=>onOpen(p.id)}>
+        <Avatar person={p}/>
+        <div>
+          <div className="nm">{p.name}{p.isMe && <span className="me-pill">Ich</span>}</div>
+          {metaParts.length>0 && <div className="meta">{metaParts.join(" · ")}</div>}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <header className="top">
         <div className="brand">
-          <h1>Torcon</h1>
-          <span className="ver">v{VERSION}</span>
+          <button className="brand-home" onClick={()=>{ setQ(""); setGroupFilter(null); window.scrollTo({top:0}); }}>
+            <span className="bh-title">Torcon</span>
+            <span className="ver">v{VERSION}</span>
+          </button>
           <span className="sub">{people.length} {people.length===1?"Person":"Personen"}</span>
         </div>
-        <input className="search" placeholder="Name, Ort, Vorliebe, Notiz…"
+        <input className="search" placeholder="Name, Ort, Vorliebe, Verbindung…"
           value={q} onChange={e=>setQ(e.target.value)} />
       </header>
       <div className="wrap">
+        {groups.length>0 && (
+          <div className="gfilter">
+            <button className={"gchip"+(!groupFilter?" on":"")} onClick={()=>setGroupFilter(null)}>Alle</button>
+            {groups.map(g=>(
+              <button key={g.id} className={"gchip"+(groupFilter===g.id?" on":"")}
+                onClick={()=>setGroupFilter(groupFilter===g.id?null:g.id)}>{g.name}</button>
+            ))}
+          </div>
+        )}
+
         {people.length===0 && (
           <div className="empty">
             <div className="e-title">Deine Kartei ist noch leer</div>
@@ -312,7 +367,7 @@ function Kartei({people,onOpen,onAdd,onSettings,today}){
           </div>
         )}
 
-        {!q && upcoming.length>0 && (
+        {!q && !groupFilter && upcoming.length>0 && (
           <>
             <div className="sect-label">Geburtstage demnächst</div>
             {upcoming.map(({p,nb})=>(
@@ -329,27 +384,18 @@ function Kartei({people,onOpen,onAdd,onSettings,today}){
           </>
         )}
 
-        {filtered.length>0 && (
-          <div className="sect-label">{q?`Treffer (${filtered.length})`:"Alle"}</div>
+        {pinMe && <><div className="sect-label">Du</div>{renderCard(me,"me")}</>}
+
+        {listed.length>0 && (
+          <div className="sect-label">{q?`Treffer (${filtered.length})`:(groupName||"Alle")}</div>
         )}
-        {filtered.map(p=>{
-          const pb=parseBday(p.birthday); const age=currentAge(pb,today);
-          const metaParts=[];
-          if(p.job&&p.job.trim()) metaParts.push(p.job);
-          if(pb) metaParts.push(fmtBday(pb)+(age!=null?` · ${age}`:""));
-          if((p.connections||[]).length) metaParts.push(`${p.connections.length} Verb.`);
-          return (
-            <div className="card" key={p.id} onClick={()=>onOpen(p.id)}>
-              <Avatar person={p}/>
-              <div>
-                <div className="nm">{p.name}</div>
-                {metaParts.length>0 && <div className="meta">{metaParts.join(" · ")}</div>}
-              </div>
-            </div>
-          );
-        })}
+        {listed.map(p=>renderCard(p))}
+
         {q && filtered.length===0 && people.length>0 && (
           <div className="empty">Keine Treffer für „{q}".</div>
+        )}
+        {!q && groupFilter && filtered.length===0 && (
+          <div className="empty">Niemand in dieser Gruppe.</div>
         )}
       </div>
       <div className="fab"><div className="fab-inner">
@@ -440,7 +486,7 @@ function ImageCropper({src,onCancel,onDone}){
   );
 }
 
-function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
+function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onDelete,today}){
   const [reveal,setReveal]=useState(false);
   const lp=useLongPress(()=>setReveal(r=>!r));
   useEffect(()=>{ setReveal(false); },[person&&person.id]);
@@ -448,7 +494,6 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
   const pb=parseBday(person.birthday); const nb=nextBirthday(pb,today); const age=currentAge(pb,today);
   const byId = id => people.find(p=>p.id===id);
   const fields=[
-    {lab:"Beruf", val:person.job},
     {lab:"Geburtstag", val: pb ? (fmtBday(pb)
         + (age!=null?` (wird ${nb.turning}, ${nb.days===0?"heute!":daysLabel(nb.days)})`
                     :` (${nb.days===0?"heute!":daysLabel(nb.days)})`)) : ""},
@@ -471,12 +516,13 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
       <div className="wrap">
         <div className="navbar">
           <button className="back" onClick={onBack}>‹ Kartei</button>
+          <button className="nav-brand" onClick={onBack}>Torcon</button>
         </div>
         <div className="detail-head">
           <span className="ava-hold" {...lp.handlers}><Avatar person={person}/></span>
           <div>
-            <h2>{person.name}</h2>
-            {pb && <div className="dh-sub">{fmtBday(pb)}{age!=null?` · ${age} Jahre`:""}</div>}
+            <h2>{person.name}{person.isMe && <span className="me-pill">Ich</span>}</h2>
+            {person.job && person.job.trim() && <div className="dh-sub">{person.job}</div>}
           </div>
         </div>
 
@@ -526,7 +572,17 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
           </div>
         )}
 
-        {fields.length===0 && !(person.connections||[]).length && !(person.custom||[]).some(c=>c.label&&c.value) && (
+        {(person.groups||[]).length>0 && groups.length>0 && (
+          <div className="field">
+            <div className="lab">Gruppen</div>
+            <div className="chips">
+              {(person.groups||[]).map(gid=>{ const g=groups.find(x=>x.id===gid); if(!g) return null;
+                return <button className="chip chip-group" key={gid} onClick={()=>onOpenGroup(gid)}>{g.name}</button>; })}
+            </div>
+          </div>
+        )}
+
+        {fields.length===0 && !(person.connections||[]).length && !(person.custom||[]).some(c=>c.label&&c.value) && !(person.groups||[]).length && (
           <div className="empty" style={{padding:"30px 10px"}}>Noch keine Infos hinterlegt. Tippe auf Bearbeiten.</div>
         )}
 
@@ -541,7 +597,7 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
 }
 
 /* ---------- edit form ---------- */
-function EditPerson({person,people,onCancel,onSave,today}){
+function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
   const isNew = !person;
   const [name,setName]=useState(person?.name||"");
   const [job,setJob]=useState(person?.job||"");
@@ -558,6 +614,9 @@ function EditPerson({person,people,onCancel,onSave,today}){
   const [secret,setSecret]=useState(person?.secret?JSON.parse(JSON.stringify(person.secret)):[]);
   const [showSecret,setShowSecret]=useState(false);
   const [cropSrc,setCropSrc]=useState(null);
+  const [isMe,setIsMe]=useState(person?.isMe||false);
+  const [pGroups,setPGroups]=useState(person?.groups?[...person.groups]:[]);
+  const [newGroup,setNewGroup]=useState("");
   const lpSecret=useLongPress(()=>setShowSecret(s=>!s));
   const galleryRef=useRef();
   const camRef=useRef();
@@ -587,7 +646,7 @@ function EditPerson({person,people,onCancel,onSave,today}){
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, secret:cleanSecret, connections:conns,
+      custom:cleanCustom, secret:cleanSecret, connections:conns, groups:pGroups, isMe,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -632,9 +691,14 @@ function EditPerson({person,people,onCancel,onSave,today}){
         <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Vor- und Nachname"/>
       </div>
 
+      <label className="me-toggle">
+        <input type="checkbox" checked={isMe} onChange={e=>setIsMe(e.target.checked)}/>
+        <span>Das bin ich (Mittelpunkt der Kartei)</span>
+      </label>
+
       <div className="form-group">
-        <label>Beruf</label>
-        <input type="text" value={job} onChange={e=>setJob(e.target.value)} placeholder="z.B. Ingenieurin, Lehrer"/>
+        <label>Funktion</label>
+        <input type="text" value={job} onChange={e=>setJob(e.target.value)} placeholder="z.B. mein Vater, beste Freundin, Chefin"/>
       </div>
 
       <div className="form-group">
@@ -730,6 +794,26 @@ function EditPerson({person,people,onCancel,onSave,today}){
         )}
       </div>
 
+      <div className="form-group">
+        <label>Gruppen</label>
+        {groups.length>0 && (
+          <div className="seg seg-groups" style={{marginBottom:8}}>
+            {groups.map(g=>(
+              <button type="button" key={g.id} className={pGroups.includes(g.id)?"on":""}
+                onClick={()=>setPGroups(pGroups.includes(g.id)?pGroups.filter(x=>x!==g.id):[...pGroups,g.id])}>{g.name}</button>
+            ))}
+          </div>
+        )}
+        <div className="custom-row">
+          <input type="text" value={newGroup} placeholder="Neue Gruppe (z.B. Familie Schulz)"
+            onChange={e=>setNewGroup(e.target.value)}
+            onKeyDown={e=>{ if(e.key==="Enter"&&newGroup.trim()){ const id=onCreateGroup(newGroup.trim()); setPGroups(g=>[...g,id]); setNewGroup(""); } }}/>
+          <button type="button" className="btn btn-soft sm" disabled={!newGroup.trim()}
+            onClick={()=>{ const id=onCreateGroup(newGroup.trim()); setPGroups(g=>[...g,id]); setNewGroup(""); }}>+</button>
+        </div>
+        <div className="hint">Mitglieder einer Gruppe erscheinen zusammen, ohne sie einzeln zu verbinden.</div>
+      </div>
+
       <div className="danger-zone">
         <button className="btn btn-ghost" style={{flex:"0 0 40%"}} onClick={onCancel}>Abbrechen</button>
         <button className="btn btn-primary" style={{flex:1}} onClick={handleSave}>Speichern</button>
@@ -739,12 +823,12 @@ function EditPerson({person,people,onCancel,onSave,today}){
 }
 
 /* ---------- settings ---------- */
-function Settings({people,ideas,onBack,onImport,onAddIdea,onRemoveIdea,onToggleIdea,toast}){
+function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,onToggleIdea,onRenameGroup,onDeleteGroup,toast}){
   const fileRef=useRef();
   const [ideaText,setIdeaText]=useState("");
   const [histOpen,setHistOpen]=useState(false);
   const doExport=()=>{
-    const blob=new Blob([JSON.stringify({app:"Torcon",version:VERSION,exported:new Date().toISOString(),people,ideas},null,2)],{type:"application/json"});
+    const blob=new Blob([JSON.stringify({app:"Torcon",version:VERSION,exported:new Date().toISOString(),people,ideas,groups},null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
     const d=new Date().toISOString().slice(0,10);
@@ -760,7 +844,7 @@ function Settings({people,ideas,onBack,onImport,onAddIdea,onRemoveIdea,onToggleI
         const data=JSON.parse(ev.target.result);
         const imported=Array.isArray(data)?data:data.people;
         if(!Array.isArray(imported)) throw new Error();
-        onImport(imported, Array.isArray(data.ideas)?data.ideas:[]);
+        onImport(imported, Array.isArray(data.ideas)?data.ideas:[], Array.isArray(data.groups)?data.groups:[]);
       }catch(err){ alert("Datei konnte nicht gelesen werden. Erwartet wird ein Torcon-Export (JSON)."); }
     };
     r.readAsText(f);
@@ -768,7 +852,7 @@ function Settings({people,ideas,onBack,onImport,onAddIdea,onRemoveIdea,onToggleI
   };
   return (
     <div className="wrap">
-      <div className="navbar"><button className="back" onClick={onBack}>‹ Kartei</button></div>
+      <div className="navbar"><button className="back" onClick={onBack}>‹ Kartei</button><button className="nav-brand" onClick={onBack}>Torcon</button></div>
       <h2 style={{fontFamily:"var(--serif)",fontWeight:600,fontSize:24,margin:"6px 2px 2px"}}>Einstellungen</h2>
 
       <div className="sect-label" style={{marginTop:20}}>Daten</div>
@@ -805,6 +889,21 @@ function Settings({people,ideas,onBack,onImport,onAddIdea,onRemoveIdea,onToggleI
         ))}
       </div>
 
+      <div className="sect-label" style={{marginTop:24}}>Gruppen</div>
+      {groups.length===0 && <div className="hint" style={{margin:"2px 2px 0"}}>Noch keine Gruppen. Leg sie beim Bearbeiten einer Person an.</div>}
+      {groups.map(g=>{
+        const count=people.filter(p=>(p.groups||[]).includes(g.id)).length;
+        return (
+          <div className="field" key={g.id}>
+            <div className="custom-row" style={{alignItems:"center"}}>
+              <input style={{flex:1}} type="text" value={g.name} onChange={e=>onRenameGroup(g.id,e.target.value)}/>
+              <span className="hint" style={{flex:"0 0 auto",margin:0}}>{count}</span>
+              <button className="btn btn-soft sm" onClick={()=>{ if(confirm(`Gruppe „${g.name}" löschen? Personen bleiben erhalten.`)) onDeleteGroup(g.id); }}>✕</button>
+            </div>
+          </div>
+        );
+      })}
+
       <div className="sect-label" style={{marginTop:24}}>Versionshistorie</div>
       <button className="hist-toggle" onClick={()=>setHistOpen(o=>!o)}>
         <span>Version {VERSION} · aktuell</span>
@@ -831,11 +930,13 @@ function App(){
   const _init = useMemo(()=>loadStore(),[]);
   const [people,setPeople]=useState(_init.people);
   const [ideas,setIdeas]=useState(_init.ideas);
+  const [groups,setGroups]=useState(_init.groups);
   const [view,setView]=useState({name:"list"}); // list | detail(id) | edit(id|null) | settings
+  const [groupFilter,setGroupFilter]=useState(null);
   const [toastMsg,setToastMsg]=useState(null);
   const [updateVer,setUpdateVer]=useState(null);
   const today=useMemo(()=>new Date(),[]);
-  useEffect(()=>{ saveStore(people, ideas); },[people, ideas]);
+  useEffect(()=>{ saveStore(people, ideas, groups); },[people, ideas, groups]);
   const toast=(m)=>{ setToastMsg(m); setTimeout(()=>setToastMsg(null),1900); };
 
   useEffect(()=>{
@@ -862,6 +963,11 @@ function App(){
   const removeIdea=(id)=>setIdeas(prev=>prev.filter(i=>i.id!==id));
   const toggleIdea=(id)=>setIdeas(prev=>prev.map(i=>i.id===id?{...i,done:!i.done}:i));
 
+  const createGroup=(name)=>{ const g={id:uid(),name:name.trim()}; setGroups(prev=>[...prev,g]); return g.id; };
+  const renameGroup=(id,name)=>setGroups(prev=>prev.map(g=>g.id===id?{...g,name}:g));
+  const deleteGroup=(id)=>{ setGroups(prev=>prev.filter(g=>g.id!==id));
+    setPeople(prev=>prev.map(p=>({...p,groups:(p.groups||[]).filter(x=>x!==id)}))); };
+
   const byId = id => people.find(p=>p.id===id);
 
   // reciprocal connections
@@ -880,6 +986,7 @@ function App(){
       const exists=prev.some(p=>p.id===person.id);
       let next=exists?prev.map(p=>p.id===person.id?person:p):[...prev,person];
       next=syncConnections(next, person.id, person.connections||[]);
+      if(person.isMe) next=next.map(p=>p.id===person.id?p:(p.isMe?{...p,isMe:false}:p));
       return next;
     });
     setView({name:"detail",id:person.id});
@@ -893,7 +1000,11 @@ function App(){
     toast("Gelöscht");
   };
 
-  const importPeople=(imported, importedIdeas=[])=>{
+  const importPeople=(imported, importedIdeas=[], importedGroups=[])=>{
+    if(importedGroups.length){
+      setGroups(prev=>{ const have=new Set(prev.map(g=>g.id));
+        return [...prev, ...importedGroups.filter(g=>g&&g.id&&!have.has(g.id))]; });
+    }
     setPeople(prev=>{
       const map=new Map(prev.map(p=>[p.id,p]));
       let added=0,updated=0;
@@ -916,22 +1027,25 @@ function App(){
 
   let body;
   if(view.name==="list")
-    body=<Kartei people={people} today={today}
+    body=<Kartei people={people} groups={groups} today={today}
+      groupFilter={groupFilter} setGroupFilter={setGroupFilter}
       onOpen={id=>setView({name:"detail",id})}
       onAdd={()=>setView({name:"edit",id:null})}
       onSettings={()=>setView({name:"settings"})}/>;
   else if(view.name==="detail")
-    body=<Detail person={byId(view.id)} people={people} today={today}
+    body=<Detail person={byId(view.id)} people={people} groups={groups} today={today}
       onBack={()=>setView({name:"list"})}
       onEdit={()=>setView({name:"edit",id:view.id})}
       onOpen={id=>setView({name:"detail",id})}
+      onOpenGroup={(gid)=>{ setGroupFilter(gid); setView({name:"list"}); }}
       onDelete={deletePerson}/>;
   else if(view.name==="edit")
-    body=<EditPerson person={view.id?byId(view.id):null} people={people} today={today}
+    body=<EditPerson person={view.id?byId(view.id):null} people={people} groups={groups} today={today}
       onCancel={()=>setView(view.id?{name:"detail",id:view.id}:{name:"list"})}
+      onCreateGroup={createGroup}
       onSave={savePerson}/>;
   else if(view.name==="settings")
-    body=<Settings people={people} ideas={ideas} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} toast={toast}/>;
+    body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onRenameGroup={renameGroup} onDeleteGroup={deleteGroup} toast={toast}/>;
 
   return <>
     {updateVer && (
