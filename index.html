@@ -185,6 +185,9 @@
   .graph-view{min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
   .graph-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px}
   .graph-svg{width:100%;max-width:680px;height:auto;display:block;touch-action:manipulation}
+  .graph-title{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;
+    font-family:var(--serif);font-size:17px;color:var(--ink);padding:4px 16px 0}
+  .graph-hint{font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:400}
   .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:var(--ink);
     color:#fff;padding:11px 18px;border-radius:11px;font-size:14px;z-index:60;
     box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%}
@@ -197,9 +200,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.11";
+const VERSION = "1.12";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.12", d:"Netz erkunden: ein Gesicht antippen macht es zum Mittelpunkt, die Mitte antippen öffnet das Profil. „Zu mir“ springt zurück."},
   {v:"1.11", d:"Verbindung hinzufügen mit Suchfeld statt langer Liste: Typ wählen, Person suchen, antippen."},
   {v:"1.10", d:"Die Ich-Markierung sitzt jetzt einmalig in den Einstellungen statt in jedem Profil."},
   {v:"1.9", d:"Neue Netz-Ansicht: du im Zentrum, deine Verbindungen als runde Gesichter rundherum, Linien zu dir und zwischen Verbundenen. Tippen öffnet die Person."},
@@ -956,12 +960,15 @@ function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,on
 const REL_COLOR={Familie:"#3f6b5a",Freund:"#9e3b3b",Partner:"#8a5a7a",Kollege:"#4a6280",Sonstige:"#7a756d"};
 function StarGraph({people,onBack,onOpen}){
   const me=people.find(p=>p.isMe);
+  const [centerId,setCenterId]=useState(me?me.id:null);
   const byId=id=>people.find(p=>p.id===id);
-  const Face=({p,x,y,r,ring,bold})=>{
+  const center=byId(centerId)||me||null;
+
+  const Face=({p,x,y,r,ring,bold,onTap})=>{
     const cid="cl_"+p.id;
     const nm=p.name.length>14?p.name.slice(0,13)+"…":p.name;
     return (
-      <g onClick={()=>onOpen(p.id)} style={{cursor:"pointer"}}>
+      <g onClick={onTap} style={{cursor:"pointer"}}>
         <clipPath id={cid}><circle cx={x} cy={y} r={r}/></clipPath>
         {p.photo
           ? <image href={p.photo} xlinkHref={p.photo} x={x-r} y={y-r} width={r*2} height={r*2} clipPath={"url(#"+cid+")"} preserveAspectRatio="xMidYMid slice"/>
@@ -975,9 +982,9 @@ function StarGraph({people,onBack,onOpen}){
   let inner=null;
   if(!me){
     inner=<div className="empty"><div className="e-title">Kein Mittelpunkt gesetzt</div>
-      Markiere im Bearbeiten-Modus eine Person als „Das bin ich", dann erscheint hier dein Netz.</div>;
-  } else {
-    const direct=(me.connections||[]).map(c=>({person:byId(c.personId),type:c.type})).filter(x=>x.person);
+      Wähle in den Einstellungen unter „Ich", wer du bist, dann erscheint hier dein Netz.</div>;
+  } else if(center){
+    const direct=(center.connections||[]).map(c=>({person:byId(c.personId),type:c.type})).filter(x=>x.person);
     const VB=1000, cx=500, cy=500, R=360;
     const pos=direct.map((d,i)=>{ const a=(-90+i*360/direct.length)*Math.PI/180;
       return {person:d.person,type:d.type,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
@@ -985,15 +992,16 @@ function StarGraph({people,onBack,onOpen}){
     const links=[];
     pos.forEach(p=>{ (p.person.connections||[]).forEach(c=>{ const q=posById[c.personId];
       if(q && c.personId>p.person.id) links.push({a:p,b:q}); }); });
+    const centerRing = center.id===me.id ? "#9e3b3b" : "#23201d";
     inner=(
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
           {pos.map((p,i)=><line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={REL_COLOR[p.type]||"#c9c2b8"} strokeWidth="4" opacity="0.55"/>)}
           {links.map((l,i)=><line key={"l"+i} x1={l.a.x} y1={l.a.y} x2={l.b.x} y2={l.b.y} stroke="#d3ccc1" strokeWidth="3" strokeDasharray="2 6"/>)}
-          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={78} ring={REL_COLOR[p.type]}/>)}
-          <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true}/>
+          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={78} ring={REL_COLOR[p.type]} onTap={()=>setCenterId(p.person.id)}/>)}
+          <Face p={center} x={cx} y={cy} r={96} ring={centerRing} bold={true} onTap={()=>onOpen(center.id)}/>
         </svg>
-        {direct.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Du hast noch keine Verbindungen. Lege bei Personen eine Verbindung zu dir an.</div>}
+        {direct.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.name} hat noch keine Verbindungen.</div>}
       </div>
     );
   }
@@ -1001,8 +1009,9 @@ function StarGraph({people,onBack,onOpen}){
     <div className="graph-view">
       <div className="navbar" style={{padding:"14px 16px"}}>
         <button className="back" onClick={onBack}>‹ Kartei</button>
-        <button className="nav-brand" onClick={onBack}>Torcon</button>
+        {me && center && center.id!==me.id && <button className="nav-brand" onClick={()=>setCenterId(me.id)}>zu mir</button>}
       </div>
+      {me && center && <div className="graph-title">Netz um {center.name}<span className="graph-hint">Gesicht antippen springt dorthin, Mitte öffnet das Profil</span></div>}
       {inner}
     </div>
   );
