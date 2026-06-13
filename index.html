@@ -190,9 +190,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.9";
+const VERSION = "1.10";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.10", d:"Die Ich-Markierung sitzt jetzt einmalig in den Einstellungen statt in jedem Profil."},
   {v:"1.9", d:"Neue Netz-Ansicht: du im Zentrum, deine Verbindungen als runde Gesichter rundherum, Linien zu dir und zwischen Verbundenen. Tippen öffnet die Person."},
   {v:"1.8", d:"Eine Person als „Ich“ markierbar (Mittelpunkt). Gruppen wie Familie oder Freundeskreis anlegen, zuordnen und nach ihnen filtern."},
   {v:"1.7", d:"Funktion meint die Rolle für dich (z.B. mein Vater). Suche findet jetzt auch Verbindungen nach Typ und verbundenem Namen."},
@@ -619,7 +620,6 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
   const [secret,setSecret]=useState(person?.secret?JSON.parse(JSON.stringify(person.secret)):[]);
   const [showSecret,setShowSecret]=useState(false);
   const [cropSrc,setCropSrc]=useState(null);
-  const [isMe,setIsMe]=useState(person?.isMe||false);
   const [pGroups,setPGroups]=useState(person?.groups?[...person.groups]:[]);
   const [newGroup,setNewGroup]=useState("");
   const lpSecret=useLongPress(()=>setShowSecret(s=>!s));
@@ -651,7 +651,7 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, secret:cleanSecret, connections:conns, groups:pGroups, isMe,
+      custom:cleanCustom, secret:cleanSecret, connections:conns, groups:pGroups, isMe:person?.isMe||false,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -695,11 +695,6 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
         <label>Name</label>
         <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Vor- und Nachname"/>
       </div>
-
-      <label className="me-toggle">
-        <input type="checkbox" checked={isMe} onChange={e=>setIsMe(e.target.checked)}/>
-        <span>Das bin ich (Mittelpunkt der Kartei)</span>
-      </label>
 
       <div className="form-group">
         <label>Funktion</label>
@@ -828,7 +823,7 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
 }
 
 /* ---------- settings ---------- */
-function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,onToggleIdea,onRenameGroup,onDeleteGroup,toast}){
+function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,onToggleIdea,onRenameGroup,onDeleteGroup,onSetMe,toast}){
   const fileRef=useRef();
   const [ideaText,setIdeaText]=useState("");
   const [histOpen,setHistOpen]=useState(false);
@@ -860,7 +855,17 @@ function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,on
       <div className="navbar"><button className="back" onClick={onBack}>‹ Kartei</button><button className="nav-brand" onClick={onBack}>Torcon</button></div>
       <h2 style={{fontFamily:"var(--serif)",fontWeight:600,fontSize:24,margin:"6px 2px 2px"}}>Einstellungen</h2>
 
-      <div className="sect-label" style={{marginTop:20}}>Daten</div>
+      <div className="sect-label" style={{marginTop:20}}>Ich</div>
+      <div className="field">
+        <div className="lab">Wer bist du?</div>
+        <select value={(people.find(p=>p.isMe)||{}).id||""} onChange={e=>onSetMe(e.target.value||null)} style={{marginTop:6}}>
+          <option value="">— niemand —</option>
+          {[...people].sort((a,b)=>a.name.localeCompare(b.name,"de")).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <div className="hint">Dein Mittelpunkt in der Netz-Ansicht. Nur einmal nötig.</div>
+      </div>
+
+      <div className="sect-label" style={{marginTop:24}}>Daten</div>
       <div className="field">
         <div className="lab">Sicherung</div>
         <div className="val" style={{fontSize:14,color:"var(--muted)"}}>
@@ -1028,6 +1033,7 @@ function App(){
   const renameGroup=(id,name)=>setGroups(prev=>prev.map(g=>g.id===id?{...g,name}:g));
   const deleteGroup=(id)=>{ setGroups(prev=>prev.filter(g=>g.id!==id));
     setPeople(prev=>prev.map(p=>({...p,groups:(p.groups||[]).filter(x=>x!==id)}))); };
+  const setMe=(id)=>setPeople(prev=>prev.map(p=>({...p,isMe:p.id===id})));
 
   const byId = id => people.find(p=>p.id===id);
 
@@ -1109,7 +1115,7 @@ function App(){
   else if(view.name==="graph")
     body=<StarGraph people={people} onBack={()=>setView({name:"list"})} onOpen={id=>setView({name:"detail",id})}/>;
   else if(view.name==="settings")
-    body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onRenameGroup={renameGroup} onDeleteGroup={deleteGroup} toast={toast}/>;
+    body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onRenameGroup={renameGroup} onDeleteGroup={deleteGroup} onSetMe={setMe} toast={toast}/>;
 
   return <>
     {updateVer && (
