@@ -145,6 +145,21 @@
   .update-bar .ub-load{background:#fff;color:var(--accent);border:none;border-radius:9px;
     padding:7px 13px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:var(--sans)}
   .update-bar .ub-x{background:none;border:none;color:rgba(255,255,255,.85);font-size:15px;cursor:pointer;padding:4px}
+  .ava-hold{display:inline-flex;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .secret-field{border-color:#d9c7b0;background:#fbf7f0}
+  .secret-pill{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    color:#fff;background:#b08a5a;border-radius:999px;padding:2px 7px;margin-left:7px;vertical-align:1px}
+  .crop-overlay{position:fixed;inset:0;z-index:90;background:#1c1a18;display:flex;flex-direction:column;color:#fff}
+  .crop-head{padding:16px;text-align:center;font-weight:600;font-family:var(--serif);font-size:18px}
+  .crop-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:0 18px;min-height:0}
+  .crop-box{position:relative;width:100%;max-width:340px;aspect-ratio:1/1;overflow:hidden;background:#000;
+    border-radius:10px;touch-action:none;cursor:grab}
+  .crop-box img{will-change:left,top,width,height}
+  .crop-ring{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none}
+  .crop-controls{padding:14px 24px 4px}
+  .crop-controls input[type=range]{width:100%}
+  .crop-hint{text-align:center;font-size:12.5px;color:#bdb6ad;margin-top:8px}
+  .crop-bar{display:flex;gap:10px;padding:14px 18px calc(18px + env(safe-area-inset-bottom))}
   .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:var(--ink);
     color:#fff;padding:11px 18px;border-radius:11px;font-size:14px;z-index:60;
     box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%}
@@ -157,9 +172,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.4";
+const VERSION = "1.5";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.5", d:"Bilder zuschneiden vor dem Hinzufügen und später erneut, geheime Felder per langem Druck auf das Foto."},
   {v:"1.4", d:"Versionshistorie ausklappbar, Hinweis wenn eine neue Version zum Laden bereitsteht."},
   {v:"1.3", d:"Beruf als eigenes Feld, wird auch durchsucht."},
   {v:"1.2", d:"Foto direkt per Kamera aufnehmen oder aus der Galerie wählen."},
@@ -345,7 +361,89 @@ function Kartei({people,onOpen,onAdd,onSettings,today}){
 }
 
 /* ---------- detail ---------- */
+/* ---------- long press + cropper ---------- */
+function useLongPress(cb, ms){
+  const timer=useRef(null);
+  const fired=useRef(false);
+  const clear=()=>{ if(timer.current){ clearTimeout(timer.current); timer.current=null; } };
+  const start=()=>{ fired.current=false; clear(); timer.current=setTimeout(()=>{ fired.current=true; cb(); }, ms||550); };
+  const handlers={
+    onTouchStart:start, onTouchEnd:clear, onTouchMove:clear, onTouchCancel:clear,
+    onMouseDown:start, onMouseUp:clear, onMouseLeave:clear,
+    onContextMenu:(e)=>e.preventDefault(),
+  };
+  return {handlers, fired};
+}
+
+function ImageCropper({src,onCancel,onDone}){
+  const boxRef=useRef();
+  const [img,setImg]=useState(null);
+  const [D,setD]=useState(0);
+  const [z,setZ]=useState(1);
+  const stateRef=useRef({s0:1,s:1,tx:0,ty:0});
+  const [,force]=useState(0);
+  const drag=useRef(null);
+
+  useEffect(()=>{ const im=new Image(); im.onload=()=>setImg({w:im.naturalWidth,h:im.naturalHeight}); im.src=src; },[src]);
+  useEffect(()=>{ if(boxRef.current) setD(boxRef.current.clientWidth||320); },[img]);
+
+  const clampAll=()=>{ const st=stateRef.current; const iw=img.w*st.s, ih=img.h*st.s;
+    st.tx=Math.min(0,Math.max(D-iw, st.tx)); st.ty=Math.min(0,Math.max(D-ih, st.ty)); };
+
+  useEffect(()=>{
+    if(!D||!img) return;
+    const st=stateRef.current; const s0=D/Math.min(img.w,img.h);
+    st.s0=s0; st.s=s0*z; st.tx=(D-img.w*st.s)/2; st.ty=(D-img.h*st.s)/2;
+    clampAll(); force(n=>n+1);
+  },[D,img]);
+
+  const applyZoom=(nz)=>{
+    if(!img||!D) return; const st=stateRef.current; const sNew=st.s0*nz; const c=D/2;
+    st.tx=c-(c-st.tx)*(sNew/st.s); st.ty=c-(c-st.ty)*(sNew/st.s); st.s=sNew;
+    clampAll(); setZ(nz); force(n=>n+1);
+  };
+  const pt=(e)=> e.touches?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY};
+  const dStart=(e)=>{ drag.current=pt(e); };
+  const dMove=(e)=>{ if(!drag.current||!img) return; const p=pt(e); const st=stateRef.current;
+    st.tx+=p.x-drag.current.x; st.ty+=p.y-drag.current.y; drag.current=p; clampAll(); force(n=>n+1); };
+  const dEnd=()=>{ drag.current=null; };
+
+  const confirm=()=>{
+    const st=stateRef.current; const OUT=480; const side=D/st.s; const sx=-st.tx/st.s, sy=-st.ty/st.s;
+    const c=document.createElement("canvas"); c.width=OUT; c.height=OUT; const ctx=c.getContext("2d");
+    const im=new Image(); im.onload=()=>{ ctx.drawImage(im, sx,sy, side,side, 0,0, OUT,OUT); onDone(c.toDataURL("image/jpeg",0.85)); };
+    im.src=src;
+  };
+
+  const st=stateRef.current;
+  return (
+    <div className="crop-overlay">
+      <div className="crop-head">Bild zuschneiden</div>
+      <div className="crop-stage">
+        <div className="crop-box" ref={boxRef}
+          onMouseDown={dStart} onMouseMove={dMove} onMouseUp={dEnd} onMouseLeave={dEnd}
+          onTouchStart={dStart} onTouchMove={dMove} onTouchEnd={dEnd}>
+          {img && <img src={src} draggable="false" style={{position:"absolute",
+            width:img.w*st.s, height:img.h*st.s, left:st.tx, top:st.ty}}/>}
+          <div className="crop-ring"></div>
+        </div>
+      </div>
+      <div className="crop-controls">
+        <input type="range" min="1" max="4" step="0.01" value={z} onChange={e=>applyZoom(parseFloat(e.target.value))}/>
+        <div className="crop-hint">Verschieben mit dem Finger, Größe mit dem Regler</div>
+      </div>
+      <div className="crop-bar">
+        <button className="btn btn-ghost" style={{flex:1}} onClick={onCancel}>Abbrechen</button>
+        <button className="btn btn-primary" style={{flex:1}} onClick={confirm}>Übernehmen</button>
+      </div>
+    </div>
+  );
+}
+
 function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
+  const [reveal,setReveal]=useState(false);
+  const lp=useLongPress(()=>setReveal(r=>!r));
+  useEffect(()=>{ setReveal(false); },[person&&person.id]);
   if(!person) return null;
   const pb=parseBday(person.birthday); const nb=nextBirthday(pb,today); const age=currentAge(pb,today);
   const byId = id => people.find(p=>p.id===id);
@@ -375,7 +473,7 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
           <button className="back" onClick={onBack}>‹ Kartei</button>
         </div>
         <div className="detail-head">
-          <Avatar person={person}/>
+          <span className="ava-hold" {...lp.handlers}><Avatar person={person}/></span>
           <div>
             <h2>{person.name}</h2>
             {pb && <div className="dh-sub">{fmtBday(pb)}{age!=null?` · ${age} Jahre`:""}</div>}
@@ -398,6 +496,16 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
             <div className="val">{c.value}</div>
           </div>
         ))}
+
+        {reveal && (person.secret||[]).filter(c=>c.label&&c.value).map((c,i)=>(
+          <div className="field secret-field" key={"s"+i}>
+            <div className="lab">{c.label}<span className="secret-pill">geheim</span></div>
+            <div className="val">{c.value}</div>
+          </div>
+        ))}
+        {reveal && !(person.secret||[]).some(c=>c.label&&c.value) && (
+          <div className="hint" style={{margin:"10px 2px"}}>Keine geheimen Felder. Beim Bearbeiten per langem Druck aufs Foto anlegen.</div>
+        )}
 
         {(person.connections||[]).length>0 && (
           <div className="field">
@@ -447,10 +555,14 @@ function EditPerson({person,people,onCancel,onSave,today}){
   const [notes,setNotes]=useState(person?.notes||"");
   const [custom,setCustom]=useState(person?.custom?JSON.parse(JSON.stringify(person.custom)):[]);
   const [conns,setConns]=useState(person?.connections?JSON.parse(JSON.stringify(person.connections)):[]);
+  const [secret,setSecret]=useState(person?.secret?JSON.parse(JSON.stringify(person.secret)):[]);
+  const [showSecret,setShowSecret]=useState(false);
+  const [cropSrc,setCropSrc]=useState(null);
+  const lpSecret=useLongPress(()=>setShowSecret(s=>!s));
   const galleryRef=useRef();
   const camRef=useRef();
 
-  const onFile=(e)=>{ const f=e.target.files[0]; if(f) compressImage(f,(d)=>{ if(d) setPhoto(d); }); e.target.value=""; };
+  const onFile=(e)=>{ const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>setCropSrc(ev.target.result); r.readAsDataURL(f); } e.target.value=""; };
 
   const others = people.filter(p=>!person || p.id!==person.id)
     .filter(p=>!conns.some(c=>c.personId===p.id))
@@ -460,6 +572,7 @@ function EditPerson({person,people,onCancel,onSave,today}){
   const addConn=()=>{ if(!addId) return; setConns([...conns,{personId:addId,type:addType}]); setAddId(""); setAddType("Freund"); };
 
   const setCustomField=(i,k,v)=>{ const n=[...custom]; n[i]={...n[i],[k]:v}; setCustom(n); };
+  const setSecretField=(i,k,v)=>{ const n=[...secret]; n[i]={...n[i],[k]:v}; setSecret(n); };
 
   const handleSave=()=>{
     if(!name.trim()){ alert("Bitte einen Namen eingeben."); return; }
@@ -469,11 +582,12 @@ function EditPerson({person,people,onCancel,onSave,today}){
       else birthday=bdayDate;
     }
     const cleanCustom=custom.filter(c=>(c.label&&c.label.trim())||(c.value&&c.value.trim()));
+    const cleanSecret=secret.filter(c=>(c.label&&c.label.trim())||(c.value&&c.value.trim()));
     onSave({
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, connections:conns,
+      custom:cleanCustom, secret:cleanSecret, connections:conns,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -482,6 +596,7 @@ function EditPerson({person,people,onCancel,onSave,today}){
 
   return (
     <div className="wrap">
+      {cropSrc && <ImageCropper src={cropSrc} onCancel={()=>setCropSrc(null)} onDone={d=>{ setPhoto(d); setCropSrc(null); }}/>}
       <div className="navbar">
         <button className="back" onClick={onCancel}>‹ Abbrechen</button>
       </div>
@@ -491,7 +606,7 @@ function EditPerson({person,people,onCancel,onSave,today}){
       <div className="form-group">
         <label>Foto (optional)</label>
         <div className="photo-pick">
-          <div className="avatar" onClick={()=>camRef.current.click()}>
+          <div className="avatar" {...lpSecret.handlers} onClick={()=>{ if(lpSecret.fired.current){ lpSecret.fired.current=false; return; } camRef.current.click(); }}>
             {photo? <img src={photo} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}}/> : (name?initials(name):"+")}
           </div>
           <div style={{flex:1}}>
@@ -499,8 +614,13 @@ function EditPerson({person,people,onCancel,onSave,today}){
               <button type="button" className="btn btn-soft sm" onClick={()=>camRef.current.click()}>Foto aufnehmen</button>
               <button type="button" className="btn btn-ghost sm" onClick={()=>galleryRef.current.click()}>Galerie</button>
             </div>
-            {photo && <button type="button" className="inline-rm" style={{marginTop:8}} onClick={()=>setPhoto(null)}>Foto entfernen</button>}
-            <div className="hint">Wird klein gerechnet und lokal gespeichert.</div>
+            {photo && (
+              <div className="row" style={{gap:8,marginTop:8}}>
+                <button type="button" className="btn btn-soft sm" onClick={()=>setCropSrc(photo)}>Zuschneiden</button>
+                <button type="button" className="btn btn-ghost sm" onClick={()=>setPhoto(null)}>Entfernen</button>
+              </div>
+            )}
+            <div className="hint">Wird zugeschnitten und lokal gespeichert.</div>
           </div>
           <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={onFile}/>
           <input ref={galleryRef} type="file" accept="image/*" style={{display:"none"}} onChange={onFile}/>
@@ -558,6 +678,22 @@ function EditPerson({person,people,onCancel,onSave,today}){
         <button type="button" className="btn btn-ghost sm btn-block" style={{marginTop:8}}
           onClick={()=>setCustom([...custom,{label:"",value:""}])}>+ Feld hinzufügen</button>
       </div>
+
+      {showSecret && (
+      <div className="form-group">
+        <label>Geheime Felder<span className="secret-pill">geheim</span></label>
+        {secret.map((c,i)=>(
+          <div className="custom-row" key={i}>
+            <input type="text" value={c.label} placeholder="Feld" onChange={e=>setSecretField(i,"label",e.target.value)}/>
+            <input type="text" value={c.value} placeholder="Inhalt" onChange={e=>setSecretField(i,"value",e.target.value)}/>
+            <button type="button" className="btn btn-soft sm" onClick={()=>setSecret(secret.filter((_,j)=>j!==i))}>✕</button>
+          </div>
+        ))}
+        <button type="button" className="btn btn-ghost sm btn-block" style={{marginTop:8}}
+          onClick={()=>setSecret([...secret,{label:"",value:""}])}>+ Geheimes Feld</button>
+        <div className="hint">Erscheint nur nach langem Druck aufs Foto. Lokal gespeichert, nicht verschlüsselt.</div>
+      </div>
+      )}
 
       <div className="form-group">
         <label>Verbindungen</label>
