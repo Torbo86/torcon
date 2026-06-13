@@ -122,6 +122,13 @@
   .custom-row{display:flex;gap:8px;margin-top:8px}
   .custom-row input:first-child{flex:0 0 38%}
   .conn-add{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-top:8px}
+  .conn-search{margin-top:8px}
+  .conn-list{max-height:230px;overflow-y:auto;margin-top:6px;-webkit-overflow-scrolling:touch}
+  .conn-row{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;
+    padding:9px 4px;border-top:1px solid var(--line-soft);cursor:pointer;font-family:var(--sans);font-size:15px;color:var(--ink)}
+  .conn-row:first-child{border-top:none}
+  .conn-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .conn-plus{flex:0 0 auto;color:var(--accent);font-weight:700;font-size:12.5px}
   .seg{display:flex;gap:6px;flex-wrap:wrap}
   .seg button{flex:1;min-width:74px;border:1px solid var(--line);background:var(--surface);
     border-radius:9px;padding:8px 6px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
@@ -190,9 +197,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.10";
+const VERSION = "1.11";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.11", d:"Verbindung hinzufügen mit Suchfeld statt langer Liste: Typ wählen, Person suchen, antippen."},
   {v:"1.10", d:"Die Ich-Markierung sitzt jetzt einmalig in den Einstellungen statt in jedem Profil."},
   {v:"1.9", d:"Neue Netz-Ansicht: du im Zentrum, deine Verbindungen als runde Gesichter rundherum, Linien zu dir und zwischen Verbundenen. Tippen öffnet die Person."},
   {v:"1.8", d:"Eine Person als „Ich“ markierbar (Mittelpunkt). Gruppen wie Familie oder Freundeskreis anlegen, zuordnen und nach ihnen filtern."},
@@ -631,9 +639,10 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
   const others = people.filter(p=>!person || p.id!==person.id)
     .filter(p=>!conns.some(c=>c.personId===p.id))
     .sort((a,b)=>a.name.localeCompare(b.name,"de"));
-  const [addId,setAddId]=useState("");
+  const [connQuery,setConnQuery]=useState("");
   const [addType,setAddType]=useState("Freund");
-  const addConn=()=>{ if(!addId) return; setConns([...conns,{personId:addId,type:addType}]); setAddId(""); setAddType("Freund"); };
+  const addConnNow=(pid)=>{ setConns([...conns,{personId:pid,type:addType}]); setConnQuery(""); };
+  const otherMatches=others.filter(p=>p.name.toLowerCase().includes(connQuery.trim().toLowerCase()));
 
   const setCustomField=(i,k,v)=>{ const n=[...custom]; n[i]={...n[i],[k]:v}; setCustom(n); };
   const setSecretField=(i,k,v)=>{ const n=[...secret]; n[i]={...n[i],[k]:v}; setSecret(n); };
@@ -778,16 +787,23 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
         })}
         {others.length>0 ? (
           <div className="conn-add">
-            <select value={addId} onChange={e=>setAddId(e.target.value)}>
-              <option value="">Person wählen…</option>
-              {others.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <div className="seg" style={{marginTop:8}}>
+            <div className="seg">
               {REL_TYPES.map(t=>(
                 <button type="button" key={t} className={(addType===t?"on t-"+t:"")} onClick={()=>setAddType(t)}>{t}</button>
               ))}
             </div>
-            <button type="button" className="btn btn-soft sm btn-block" style={{marginTop:10}} disabled={!addId} onClick={addConn}>+ Verbindung hinzufügen</button>
+            <input className="conn-search" type="text" value={connQuery} placeholder="Person suchen und antippen…"
+              onChange={e=>setConnQuery(e.target.value)}/>
+            <div className="conn-list">
+              {otherMatches.map(p=>(
+                <button type="button" className="conn-row" key={p.id} onClick={()=>addConnNow(p.id)}>
+                  <AvaSm person={p}/>
+                  <span className="conn-nm">{p.name}</span>
+                  <span className="conn-plus">+ {addType}</span>
+                </button>
+              ))}
+              {otherMatches.length===0 && <div className="hint" style={{padding:"8px 4px"}}>Keine passende Person.</div>}
+            </div>
           </div>
         ) : (
           <div className="hint">{people.length<=1?"Lege weitere Personen an, um sie zu verbinden.":"Alle anderen sind bereits verbunden."}</div>
