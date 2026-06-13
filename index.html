@@ -175,6 +175,9 @@
   .gchip.on{background:var(--ink);color:#fff;border-color:transparent}
   .chip-group{font-weight:600;color:var(--kol)}
   .seg-groups button.on{background:var(--kol);color:#fff;border-color:transparent}
+  .graph-view{min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
+  .graph-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px}
+  .graph-svg{width:100%;max-width:680px;height:auto;display:block;touch-action:manipulation}
   .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:var(--ink);
     color:#fff;padding:11px 18px;border-radius:11px;font-size:14px;z-index:60;
     box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%}
@@ -187,9 +190,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.8";
+const VERSION = "1.9";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.9", d:"Neue Netz-Ansicht: du im Zentrum, deine Verbindungen als runde Gesichter rundherum, Linien zu dir und zwischen Verbundenen. Tippen öffnet die Person."},
   {v:"1.8", d:"Eine Person als „Ich“ markierbar (Mittelpunkt). Gruppen wie Familie oder Freundeskreis anlegen, zuordnen und nach ihnen filtern."},
   {v:"1.7", d:"Funktion meint die Rolle für dich (z.B. mein Vater). Suche findet jetzt auch Verbindungen nach Typ und verbundenem Namen."},
   {v:"1.6", d:"Beruf heißt jetzt Funktion und steht als Titel unter dem Namen. Tippen auf Torcon führt zur Startseite."},
@@ -293,7 +297,7 @@ function AvaSm({person}){
 }
 
 /* ---------- list / Kartei ---------- */
-function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onSettings}){
+function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onSettings,onGraph}){
   const [q,setQ]=useState("");
   const groupName = groupFilter ? (groups.find(g=>g.id===groupFilter)||{}).name : null;
   const sorted = useMemo(()=>[...people].sort((a,b)=>a.name.localeCompare(b.name,"de")),[people]);
@@ -400,6 +404,7 @@ function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onS
       </div>
       <div className="fab"><div className="fab-inner">
         <button className="btn btn-ghost sm" onClick={onSettings} aria-label="Einstellungen">⚙︎</button>
+        <button className="btn btn-ghost sm" onClick={onGraph} aria-label="Netz">✦</button>
         <button className="btn btn-primary" onClick={onAdd}>+ Person anlegen</button>
       </div></div>
     </div>
@@ -926,6 +931,62 @@ function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,on
 }
 
 /* ---------- app ---------- */
+/* ---------- netz / star graph ---------- */
+const REL_COLOR={Familie:"#3f6b5a",Freund:"#9e3b3b",Partner:"#8a5a7a",Kollege:"#4a6280",Sonstige:"#7a756d"};
+function StarGraph({people,onBack,onOpen}){
+  const me=people.find(p=>p.isMe);
+  const byId=id=>people.find(p=>p.id===id);
+  const Face=({p,x,y,r,ring,bold})=>{
+    const cid="cl_"+p.id;
+    const nm=p.name.length>14?p.name.slice(0,13)+"…":p.name;
+    return (
+      <g onClick={()=>onOpen(p.id)} style={{cursor:"pointer"}}>
+        <clipPath id={cid}><circle cx={x} cy={y} r={r}/></clipPath>
+        {p.photo
+          ? <image href={p.photo} xlinkHref={p.photo} x={x-r} y={y-r} width={r*2} height={r*2} clipPath={"url(#"+cid+")"} preserveAspectRatio="xMidYMid slice"/>
+          : <g><circle cx={x} cy={y} r={r} fill="#efeae3"/><text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontFamily="Georgia, serif" fontSize={r*0.8} fill="#8a847c">{initials(p.name)}</text></g>}
+        <circle cx={x} cy={y} r={r} fill="none" stroke={ring||"#c9c2b8"} strokeWidth={bold?10:7}/>
+        <text x={x} y={y+r+32} textAnchor="middle" fontSize="29" fontFamily="sans-serif" fill="#23201d">{nm}</text>
+      </g>
+    );
+  };
+
+  let inner=null;
+  if(!me){
+    inner=<div className="empty"><div className="e-title">Kein Mittelpunkt gesetzt</div>
+      Markiere im Bearbeiten-Modus eine Person als „Das bin ich", dann erscheint hier dein Netz.</div>;
+  } else {
+    const direct=(me.connections||[]).map(c=>({person:byId(c.personId),type:c.type})).filter(x=>x.person);
+    const VB=1000, cx=500, cy=500, R=360;
+    const pos=direct.map((d,i)=>{ const a=(-90+i*360/direct.length)*Math.PI/180;
+      return {person:d.person,type:d.type,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
+    const posById={}; pos.forEach(p=>posById[p.person.id]=p);
+    const links=[];
+    pos.forEach(p=>{ (p.person.connections||[]).forEach(c=>{ const q=posById[c.personId];
+      if(q && c.personId>p.person.id) links.push({a:p,b:q}); }); });
+    inner=(
+      <div className="graph-stage">
+        <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
+          {pos.map((p,i)=><line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={REL_COLOR[p.type]||"#c9c2b8"} strokeWidth="4" opacity="0.55"/>)}
+          {links.map((l,i)=><line key={"l"+i} x1={l.a.x} y1={l.a.y} x2={l.b.x} y2={l.b.y} stroke="#d3ccc1" strokeWidth="3" strokeDasharray="2 6"/>)}
+          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={78} ring={REL_COLOR[p.type]}/>)}
+          <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true}/>
+        </svg>
+        {direct.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Du hast noch keine Verbindungen. Lege bei Personen eine Verbindung zu dir an.</div>}
+      </div>
+    );
+  }
+  return (
+    <div className="graph-view">
+      <div className="navbar" style={{padding:"14px 16px"}}>
+        <button className="back" onClick={onBack}>‹ Kartei</button>
+        <button className="nav-brand" onClick={onBack}>Torcon</button>
+      </div>
+      {inner}
+    </div>
+  );
+}
+
 function App(){
   const _init = useMemo(()=>loadStore(),[]);
   const [people,setPeople]=useState(_init.people);
@@ -1031,7 +1092,8 @@ function App(){
       groupFilter={groupFilter} setGroupFilter={setGroupFilter}
       onOpen={id=>setView({name:"detail",id})}
       onAdd={()=>setView({name:"edit",id:null})}
-      onSettings={()=>setView({name:"settings"})}/>;
+      onSettings={()=>setView({name:"settings"})}
+      onGraph={()=>setView({name:"graph"})}/>;
   else if(view.name==="detail")
     body=<Detail person={byId(view.id)} people={people} groups={groups} today={today}
       onBack={()=>setView({name:"list"})}
@@ -1044,6 +1106,8 @@ function App(){
       onCancel={()=>setView(view.id?{name:"detail",id:view.id}:{name:"list"})}
       onCreateGroup={createGroup}
       onSave={savePerson}/>;
+  else if(view.name==="graph")
+    body=<StarGraph people={people} onBack={()=>setView({name:"list"})} onOpen={id=>setView({name:"detail",id})}/>;
   else if(view.name==="settings")
     body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onRenameGroup={renameGroup} onDeleteGroup={deleteGroup} toast={toast}/>;
 
