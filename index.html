@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlRvcmNvbiIsICJzaG9ydF9uYW1lIjogIlRvcmNvbiIsICJzdGFydF91cmwiOiAiLi8iLCAic2NvcGUiOiAiLi8iLCAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwgImJhY2tncm91bmRfY29sb3IiOiAiI2Y2ZjRmMSIsICJ0aGVtZV9jb2xvciI6ICIjOWUzYjNiIiwgImljb25zIjogW3sic3JjIjogImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBZ0FBQUFJQUNBSUFBQUI3R2tPdEFBQU5ORWxFUVZSNDJ1M2RQVzVjVlJUQWNjZWFMYmdhS1JJc0FxUTRpb1NDV0VFYXRnQ0NTRW1SdlZDNHBVbURVaUNLeU1vS0VCOE5EVFpJMCtBQ0VFZ2dDeU1LV3lISjJQUHg1dDczN2ozbjl5c1JoR1RtdmZPLzU0MWozem82UE53RElKOTlMd0dBQUFBZ0FBQUlBQUFDQUlBQUFDQUFBQWdBQUFJQWdBQUFJQUFBQ0FBQUFnQ0FBQUFnQUFBSUFBQUNBSUFBQUNBQUFBZ0FBQUlBZ0FBQUlBQUFDQUNBQUFBZ0FBQUlBQUFDQUlBQUFDQUFBQWdBQUFJQWdBQUFJQUFBQ0FBQUFnQ0FBQUFnQUFBSUFBQUNBSUFBQUNBQUFBZ0FBQUlBZ0FBQUlBQUFDQUNBQUFBZ0FBQUlBQUFDQUlBQUFDQUFBQWdBQUFJQWdBQUFJQUFBQ0FBQUFnQ0FBQUF3dXBtWGdIZ081dlBpditiWll1R0ZSUUFnNW9qZjVmOG9Ed2dBUkpqMXBYNlRxb0FBUUxSeFAvalBJZ2tJQU1TYytOditZZlVBQWNEUTl6cUlBUUtBb1Y5Q2pXRmErL2N2QmdnQTV2NWtJMzZYLzJQWlArYkxYMDBKRUFCU0QvMHVodUMxdjhuZFh3ZHJBUUpBcnJrZlp0Szk4UWZaOGZXeEZpQUFCSno3U1NaYXFSNG9BUUpBMzNQZjhIcjFGUmoyWWlvQkFrQTNjOStjcWhRREpVQUFhSEgwRzBsanh1RHkzL2VhSXdDWSszRmlzTlc3WUNGQUFKaGc5SnM0RFpiQW00SUFVSEgwR3pFdGwwQUdFQURNL2RRbDhGd0lBYURBNkRkQkFwVEFtNGdBWVBSSEs0RU1JQUNVSFAzR1JOU0ZRQVlFQUtQZjZFKzlFTWlBQUdEMEcvMHk0SDBYQUJLUGZ2ZC80QXhzY2huSVFDcjdYZ0xULytXTWNOdG5LTUVtNzdLZjJXa0RJTkhvOTBJbFhBaFdYeHRXQVFIQTZFY0dYQ2NDZ05HUERCQ0x6d0RTVFgvUCtobDJWZmhnUUFCb2V2UnZNdjI5VUF5K1BEYTV4dWlJUjBBcFR2MUdQMXMxd0JNaEd3QkJwcjluUGd6SWdDZENOZ0M2SC8xZUplcHRBMVlCR3dDbVAvRXpZQld3QVdEMFl4V3dDdGdBYUhMNmU5eFAxUXlzdnJxc0FnTEFsTlBmUzhRNDI0QUd4T0FSa05FUFF4cHcwelhwY1pBTkFOTWZxd0FDUUxYcDc0ay9remRneFJXb0FRTEFUcU4vOWZUM0V0SDRLdUJiUndnQWhRLytwajhkTmNBcUlBQVVtLzRlKzlCc0F6d09FZ0IySGYwZSt4QnlGZkE0U0FBWWVQQTMvUW5RQUt1QUFMRDFqZUd4RDkwMXdPTWdBYURNOVBmNkVHd1YwQUFCd1BSSEE1aVNid1ZoOUVQMUJseDdxZnVtRVRZQTA5LzB4eXFBQUpqK3BqOGFnQUNZL3FBQkNJRHBEeHFBQUpqK29BRUlRS1RwNys5NWtiQUJOMTN6R2lBQXVhYS9Gd2VyZ0FZSWdPa1BHcUFCQW1ENmd3WWdBS1kvYUFBQ1lQcURCaUFBcGo5b0FBSmcrb01HSUFDbVAyZ0FBbUQ2Z3dZZ0FLWS9hQUFDWVBxREJpQUFwajlvZ0FBdzh1VUx1SWtFSVBMeDM0VUw5UnBnQ1JDQWRxYy80TllUZ0tTWG9PTS8xRjRDTkVBQVRIL1FBQVRBOUFjTlFBQmF1MEFCdDVnQVJENyt1elJocWdaWUFvYVplUW42bmY3dlB2cjByZnZ2ZVVlWTNKY2ZQZno5cDUvSGJNRHliWGd3bnp1RTJRQW1tUDZBMjFNQTdLU0FtMDRBMHB3dlhJalFUZ01zQVFKZytvTUdJQUExcHovZ2hoVUFwdy9BYlNnQWFVNFRManRvdVFHV0FBRXcvVUVERUlCeTB4OXdDd3VBc3diZ3hoU0FOR2NIRnhuMDFRQkxnQUNZL3FBQkNBQUFBdUQ0RDVZQUFjRDBCdzBRQUFBRXdQSGY4UjhzQVFMZ01nTGN2QUtRN1BnUHVNMmo4ak9CVjEwV2dVOFFYMzkyOU1NWHovcjZQZDk1OHZqMnZidGQvRmFmUHZqd243Lys3dXZsZmVmaHgyOS84SDY4SmNCUEQ3WUJBQ0FBanYrUWlVK0RCYURNUlFPNG5RVWcvdkVmY09NTGdQTUM0S1lXQUtjQXdPMHZBSUhmZmljRnlMTUVKRytBUjBBQUF1RDQ3L2dQbGdBQmNIRUFibk1CU0hUOEJ3d0VBWEF1QU56c0FxRDJnTEVnQUU0RWdGdGVBSFFlTUJ3RXdGa0FjT01MZ01JRFJvUUFPQVVBYm44QjBIYkFvQkFBL1FjTUFRRUFRQUNzZFlCeElRQldQOEFvRUFBOUJ3d05BZEI4d0VBUUFDVUhqQTRCVUh2QVdCQUFBQVFnNFJJSEdDQUNZTkVEREFjQmNQd0hqQkViZ09NL1lFUUlBQUQvbTFuYyt2WExOOTlkbko4UCsyOS9PejExOWZQYTVmVHQ5LzllWEF6N2I4Ly8rRFB3SzNNd24wZmRER1o1cnU5NGIrSEo4K09UNThjbUYwV2NIcjg0UFg3aGRUaGJMSHd6T0FBRW9NK1Z6VnNMR0NrMmdLdTF6a1VNR0JjWkF3QkEvQUI0L2dNWUxEYUFkQXNkWUdnSUFBREpBdUQ1RDJDODJBQnlyWEtBMFNFQUFBZ0FBRWtDc1B5RXp2TWZZTERsQVJMc1l3QWJBSUFOQUFBQjZKRXZBQVdNR2h2QUZSOEFBTVpJMGdBQUlBQUFCQTJBRHdBQUE4Y0djTVVIQUlCaGtqUUFBQWdBQUVFRDRBTUF3Tml4QVZ6eEFRQmdwQ1FOQUFBQ0FJQUFBQkFwQUQ0QkJnd2ZHOEFWbndBREJrdlNBQUFnQUFBSUFBQUNBRUQzQVZqK0ZONG53RUFseStPbDl5OEVzZ0VBMkFBQUVBQUFCQUFBQVFCQUFBQVFnTW40R2xCZ1pNRytFdFFHQUdBREFFQUFBQkFBQUFRQUFBRUFRQUFBRUFBQUJBQUFBYWpDWHdNR0poSHBMd1BiQUFCc0FBQUlBQUFDQUlBQUFDQUFBQWdBQUFJQWdBQUFJQUFBQ0FBQUFnQ0FBQUFnQUFBSUFBQUNBSUFBQUNBQUFBZ0FBQUlBZ0FBQUlBQUFDQUFBQWdBZ0FBQUlBQUFDQUlBQU5PZHNzWGpqbnh6TTU5NU9vTGJsVWJNOGpnUUFBQUVBUUFBQUVBQUFCQUFBQVFCQUFBQVFBQUFFQUlEc0FmQ1hnWUdSUmZwcndEWUFBQnNBQUFJQWdBQUFJQUFBQ0FBQUFqQXhYd2tLakNiWTE0RGFBQUJzQUFBSUFBQUNBSUFBOU1QbndJREJraUlBdlg4S0R4ZytBZ0NBQUFBZ0FBQUl3Qlo4RGd3WUtTa0M0SE5nd05peEFRQWdBQURrRElDUEFRRERKRVVBZkF3QUdEZzJBQUFFQUlDY0FmQXhBR0NNcEFpQWp3RUFvOFlHQUlBQUFKQWhBTXVybVk4QmdNR1dCMGl3UjgwMkFBQWJBQUFDRUh1SkF6QTZBZ2JBRjRNQ3hvc05BSUQwQWZBVUNEQTBVZ1RBVXlEQVlMRUJBSkErQUo0Q0FjWkZpZ0I0Q2dRWUtUWUFBTklId0ZNZ3dLQklFUUJQZ1FERHhBWUFRUG9BZUFvRUdCRXBBdUFwRUdDTTJBQXNBWURoa0N3QWxnREFBTEVCQUpBK0FKNENBY1pDaWdCNENnUVlIVFlBU3dCZ0lDUUxnQ1VBTURSc0FKb1BHQVhKQW1BSkFJd0xHd0FBNlFQZ0tSQWtsM3dJekZLdGRTYitPTzQ4ZVh6NzN0M01yOENEcDUvWCtHVy8rdVRScnorZXVNQnFEd29iZ1A0RGJuOEIwSGJBaUJBQXB3REFqUzhBQ2c4WURnTGdMQUM0NVFWQTV3RmpRUUNjQ0FBM3V3Q29QV0FnQ0lCekFlQTJGNEFXbSsvaWdHelRQL1B6QUJzQWdBQllBaXdCNFBndkFNa2JBTGo5QmNCSkFYQlRDNEJUQU9ER0Z3RG5CY0R0TEFDUnp3SXVHb2c2L1IzL0w5MDZPanowS3JoS3dLMXRBN0FFV0FMQTlCY0FEUURjNWdMZ0JBRzRlUVVnNCtuQVpRUXhwci9qdndBQUlBQ1dBSEQ4RndBMEFFeC9BUUJBQUN3QmxnQncvQmNBRGRBQU1QMEZ3RVdtQWVER0ZJQ1VTd0RnRmhhQXZCZVFzd2EwZi93My9RVkFBOEQwUndCR3Vld0F0NkVBeEY4Q0FEZXNBT1M5cEp3K29MWGp2K2t2QUJvQXBqOENNTkdGQ0xqcEJDRCtFZ0M0UFFVZzcwWG1QQUxUSHY5TmZ3SFFBREQ5RVlCbUxrM0FMU1lBOFpjQUZ5aU1QLzBkL3dWQUE4RDBSd0EwQUV4L0JHRENCZ0J1UFFGSWVpRmFBcURlOGQvMEY0QmU5MWJBVFNRQThiZFJseThVbi82Ty93S2dBV0Q2SXdBYUFLWS9BcUFCWVBvakFCb0FwajhDb0FGZytpTUFHZ0NtUHdLZ0FXRDZDd0FhQUthL0FLQUJZUG9MQUJvQXByOEFvQUZnK2dzQU5Sb2dBMlFiL2FhL0FHaUFWUUFIZjlOZkFEUkFBekQ5RVFBTkFOTWZBZEFBTVAwUkFBMEEwNStpWmw2Q3lSdHc3YjF4K1EvZEd4ajkyQUNzQW1ENkl3QWFBS1kvQXBDbkFUSkFYNlBmOUJjQWlqWEFLa0NBZzcvcEx3Q3NhWURIUVlTYy9xdXZiUVNBOWFja2o0Tm9kdlI3N0NNQVZHK0FWWUNPRHY2bXZ3QXdzQUVlQjlIMTlQZllSd0NvdFFwNEhNVGtvOTlqSHdGZ3NnWllCV2p3NEcvNjk4SzNndWlwQVRmZGNyNXZCRVkvTmdDckFKaitDRURXQnNnQTlVYS82UitNUjBDOU5tREZyZWlKRUdPZStsMXNOZ0RhV2dYMlBCSEM5TWNHWUJWd2YyTDBZd1BJdXdyWUJ0aDI5SnYrTmdDQ3JBSzJBVXFkK2wxRk5nQWF6WUFQQnFnNi9YMXJCd0dnZzIxZ3grMmVoS1BmTTUrRVBBSUsyd0JQaENoeTZuZWRDQUF5Z05HUEFDQURHUDJFNERPQVJCbFlPeFI4TnBCaDlKdisyQUNzQW12T2hrWkF0aU8vOTEwQWtJSFhSb1p4WVBRakFNZ0FSajhDUU5ZTW1CVEI1cjQzRkFHUWdVMHpZQ0V3K2hFQVpNQkMwT3ZjOTY0aEFLd1pEVXBnN2lNQVdBaTJHMGFtVEd0ejM1dUNBREJHQnBTZ3FibnZYVUFBS0pNQkpURDNFUUFzQk51TnBGZi9mWU9wM3REM0NpTUFOTG9RaUVHOW9lL0ZSQURvcVFSaXNGZmlwN09aK3dnQWZaZGcrVCtNT3RkS2ZiTlZjeDhCSUdBSmd2V2c3TGZYTnZjUkFIb3FRWkVoZU8ydjBObzByUFNqRkF4OUJBQnJ3WFlEdDhiY0hQT241Wmo3Q0FEV2dnNkd0YUdQQUVDak1URDBRUURvWXdqRzdvR0pqd0RBRmlPeTN5UVk5d2dBbEIranJWWEJyRWNBb0ltQld5TVBSandDQU4zbkFiaTA3eVVBRUFBQUJBQUFBUUJBQUFBUUFBQUVBQUFCQUVBQUFCQUFBQVFBQUFFQVFBQUFFQUFBQkFBQUFRQkFBQUFRQUFBRUFBQUJBRUFBQUJBQUFBUUFBQUVBRUFBQUJBQUFBUUJBQUFBUUFBQUVBQUFCQUVBQUFCQUFBQVFBQUFFQVFBQUFFQUFBQkFBQUFRQkFBQUFRQUFBRUFBQUJBRUFBQUJBQUFBUUFBQUVBRUFBQUJBQUFBUUJBQUFBUUFBQUVBQUFCQUVBQUFCQUFBQVFBQUFFQVFBQUFFQUFBUnZjZkdSeDlDMVczc25vQUFBQUFTVVZPUks1Q1lJST0iLCAic2l6ZXMiOiAiNTEyeDUxMiIsICJ0eXBlIjogImltYWdlL3BuZyIsICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSJ9XX0=">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Torcon">
+<title>Torcon</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f4f1; --surface:#ffffff; --ink:#23201d; --muted:#8a847c;
+    --line:#e6e1da; --line-soft:#efeae3; --accent:#9e3b3b; --accent-dark:#863030;
+    --fam:#3f6b5a; --fre:#9e3b3b; --par:#8a5a7a; --kol:#4a6280; --son:#7a756d;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,ui-serif,serif;
+    --sans:-apple-system,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  #root{max-width:640px;margin:0 auto;min-height:100vh}
+  .wrap{padding:18px 16px calc(96px + env(safe-area-inset-bottom))}
+  header.top{position:sticky;top:0;z-index:20;background:rgba(246,244,241,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+    padding:14px 16px calc(12px);max-width:640px;margin:0 auto}
+  .brand{display:flex;align-items:baseline;gap:8px}
+  .brand h1{font-family:var(--serif);font-size:24px;font-weight:600;margin:0;letter-spacing:.2px}
+  .brand .ver{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .brand .sub{margin-left:auto;font-size:12px;color:var(--muted)}
+  .search{margin-top:12px;width:100%;border:1px solid var(--line);background:var(--surface);
+    border-radius:11px;padding:11px 13px;font-size:15px;font-family:var(--sans);color:var(--ink)}
+  .search:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+
+  .sect-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    margin:22px 2px 9px;font-weight:600}
+  .sect-label:first-child{margin-top:6px}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:14px;display:flex;gap:13px;align-items:center;cursor:pointer;
+    transition:border-color .12s,transform .04s}
+  .card+.card{margin-top:9px}
+  .card:active{transform:scale(.995)}
+  .card:hover{border-color:#d9d2c9}
+  .avatar{width:48px;height:48px;border-radius:50%;flex:0 0 auto;object-fit:cover;
+    background:var(--line-soft);display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:20px;color:var(--muted);overflow:hidden}
+  .card .nm{font-family:var(--serif);font-size:18px;line-height:1.2}
+  .card .meta{font-size:13px;color:var(--muted);margin-top:2px}
+  .bdaytag{margin-left:auto;flex:0 0 auto;text-align:right;font-size:12px;color:var(--accent);
+    font-weight:600;line-height:1.25}
+  .bdaytag .big{font-size:15px}
+
+  .empty{text-align:center;color:var(--muted);padding:46px 20px;font-size:15px}
+  .empty .e-title{font-family:var(--serif);font-size:20px;color:var(--ink);margin-bottom:6px}
+
+  .fab{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));pointer-events:none;z-index:30}
+  .fab-inner{max-width:640px;width:100%;display:flex;gap:10px;pointer-events:auto}
+  .btn{appearance:none;border:none;border-radius:12px;font-family:var(--sans);font-size:15px;
+    font-weight:600;padding:13px 16px;cursor:pointer;display:inline-flex;align-items:center;
+    justify-content:center;gap:7px}
+  .btn-primary{background:var(--accent);color:#fff;flex:1;box-shadow:0 4px 14px rgba(158,59,59,.28)}
+  .btn-primary:active{background:var(--accent-dark)}
+  .btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+  .btn-soft{background:var(--line-soft);color:var(--ink)}
+  .btn-danger{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  .btn-block{width:100%}
+  .btn.sm{padding:9px 12px;font-size:13.5px;border-radius:10px}
+
+  /* detail */
+  .navbar{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .back{background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;
+    cursor:pointer;padding:6px 2px;display:inline-flex;align-items:center;gap:4px}
+  .detail-head{display:flex;gap:16px;align-items:center;margin:10px 2px 4px}
+  .detail-head .avatar{width:76px;height:76px;font-size:30px}
+  .detail-head h2{font-family:var(--serif);font-weight:600;font-size:27px;margin:0;line-height:1.1}
+  .detail-head .dh-sub{color:var(--muted);font-size:14px;margin-top:5px}
+  .field{background:var(--surface);border:1px solid var(--line);border-radius:13px;
+    padding:13px 15px;margin-top:10px}
+  .field .lab{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin-bottom:4px}
+  .field .val{font-size:15.5px;white-space:pre-wrap;word-break:break-word}
+  .swatch{display:inline-block;width:13px;height:13px;border-radius:50%;
+    border:1px solid rgba(0,0,0,.12);vertical-align:-1px;margin-right:7px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);
+    border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 8px;font-size:14px;
+    cursor:pointer}
+  .chip .ava-sm{width:24px;height:24px;border-radius:50%;object-fit:cover;background:var(--line-soft);
+    display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:12px;
+    color:var(--muted);overflow:hidden}
+  .reltag{font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:999px;color:#fff}
+  .t-Familie{background:var(--fam)} .t-Freund{background:var(--fre)}
+  .t-Partner{background:var(--par)} .t-Kollege{background:var(--kol)} .t-Sonstige{background:var(--son)}
+
+  /* form */
+  .form-group{margin-top:14px}
+  .form-group>label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px}
+  input[type=text],input[type=date],textarea,select{width:100%;border:1px solid var(--line);
+    background:var(--surface);border-radius:11px;padding:11px 13px;font-size:15px;
+    font-family:var(--sans);color:var(--ink)}
+  textarea{resize:vertical;min-height:64px}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+  .row{display:flex;gap:10px;align-items:center}
+  .row>*{flex:1}
+  .photo-pick{display:flex;gap:14px;align-items:center}
+  .photo-pick .avatar{width:64px;height:64px;font-size:26px;cursor:pointer}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .inline-rm{background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0}
+  .custom-row{display:flex;gap:8px;margin-top:8px}
+  .custom-row input:first-child{flex:0 0 38%}
+  .conn-add{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-top:8px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:74px;border:1px solid var(--line);background:var(--surface);
+    border-radius:9px;padding:8px 6px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+  .seg button.on{color:#fff;border-color:transparent}
+  .seg button.on.t-Familie{background:var(--fam)} .seg button.on.t-Freund{background:var(--fre)}
+  .seg button.on.t-Partner{background:var(--par)} .seg button.on.t-Kollege{background:var(--kol)}
+  .seg button.on.t-Sonstige{background:var(--son)}
+
+  .divider{height:1px;background:var(--line);margin:22px 0 4px}
+  .danger-zone{margin-top:26px;display:flex;gap:10px}
+  .idea-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line-soft)}
+  .idea-row:first-of-type{border-top:none;margin-top:4px}
+  .idea-check{flex:0 0 auto;width:22px;height:22px;border-radius:6px;border:1px solid var(--line);
+    background:var(--surface);cursor:pointer;font-size:13px;color:#fff;display:flex;align-items:center;justify-content:center}
+  .idea-check.on{background:var(--fam);border-color:transparent}
+  .idea-text{flex:1;font-size:15px;word-break:break-word}
+  .idea-text.done{text-decoration:line-through;color:var(--muted)}
+  .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:var(--ink);
+    color:#fff;padding:11px 18px;border-radius:11px;font-size:14px;z-index:60;
+    box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%}
+  .settings-list{margin-top:6px}
+  .settings-list .btn{margin-top:10px}
+  a.hiddenlink{display:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="env,react">
+const {useState,useEffect,useRef,useMemo} = React;
+const VERSION = "1.1";
+const STORE_KEY = "torcon_v1";
+const CHANGELOG = [
+  {v:"1.1", d:"Versionshistorie und Ideen-Notizen, Suche auch nach Ort des Kennenlernens und eigenen Feldern, Icon und Installation auf dem Startbildschirm."},
+  {v:"1.0", d:"Erste Version: Kartei mit Personen, Foto, Standard- und eigenen Feldern, Verbindungen mit Typ, Geburtstage und Export/Import."},
+];
+const REL_TYPES = ["Familie","Freund","Partner","Kollege","Sonstige"];
+
+/* ---------- storage ---------- */
+function loadStore(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return {people:[], ideas:[]};
+    const data = JSON.parse(raw);
+    return {
+      people: Array.isArray(data.people) ? data.people : [],
+      ideas: Array.isArray(data.ideas) ? data.ideas : [],
+    };
+  }catch(e){ return {people:[], ideas:[]}; }
+}
+function saveStore(people, ideas){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify({version:VERSION, people, ideas})); }
+  catch(e){ alert("Speichern fehlgeschlagen. Eventuell ist der Speicher voll (zu viele oder zu große Bilder)."); }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+/* ---------- date helpers ---------- */
+function parseBday(b){
+  // b: "YYYY-MM-DD" or "--MM-DD" (year unknown) -> {y,m,d,hasYear}
+  if(!b) return null;
+  if(b.startsWith("--")){ const [,m,d]=b.split("-").filter(Boolean); return {y:null,m:+m,d:+d,hasYear:false}; }
+  const [y,m,d]=b.split("-").map(Number);
+  if(!y||!m||!d) return null;
+  return {y,m,d,hasYear:true};
+}
+function nextBirthday(parsed, today){
+  if(!parsed) return null;
+  const mkSafe = (yr) => { const dt=new Date(yr,parsed.m-1,parsed.d); 
+    if(dt.getMonth()!==parsed.m-1){ return new Date(yr,parsed.m-1,28); } return dt; };
+  const t = new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  let nxt = mkSafe(t.getFullYear());
+  if(nxt < t) nxt = mkSafe(t.getFullYear()+1);
+  const days = Math.round((nxt - t)/86400000);
+  let turning = null;
+  if(parsed.hasYear) turning = nxt.getFullYear() - parsed.y;
+  return {days, date:nxt, turning};
+}
+function currentAge(parsed, today){
+  if(!parsed || !parsed.hasYear) return null;
+  let a = today.getFullYear()-parsed.y;
+  const beforeBday = (today.getMonth()+1 < parsed.m) ||
+    (today.getMonth()+1===parsed.m && today.getDate()<parsed.d);
+  if(beforeBday) a--;
+  return a;
+}
+const MON = ["Jan.","Feb.","März","Apr.","Mai","Juni","Juli","Aug.","Sep.","Okt.","Nov.","Dez."];
+function fmtBday(parsed){
+  if(!parsed) return "";
+  const base = `${parsed.d}. ${MON[parsed.m-1]}`;
+  return parsed.hasYear ? `${base} ${parsed.y}` : base;
+}
+function daysLabel(d){
+  if(d===0) return "heute";
+  if(d===1) return "morgen";
+  return `in ${d} Tg.`;
+}
+
+/* ---------- image compression ---------- */
+function compressImage(file, cb){
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const max=480; let {width:w,height:h}=img;
+      if(w>h && w>max){ h=h*max/w; w=max; } else if(h>max){ w=w*max/h; h=max; }
+      const c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      cb(c.toDataURL("image/jpeg",0.8));
+    };
+    img.onerror=()=>cb(null);
+    img.src=e.target.result;
+  };
+  reader.onerror=()=>cb(null);
+  reader.readAsDataURL(file);
+}
+const initials = (n) => (n||"?").trim().split(/\s+/).map(p=>p[0]).slice(0,2).join("").toUpperCase();
+
+/* ---------- small components ---------- */
+function Avatar({person,cls}){
+  if(person && person.photo) return <img className={"avatar "+(cls||"")} src={person.photo} alt=""/>;
+  return <div className={"avatar "+(cls||"")}>{person?initials(person.name):"?"}</div>;
+}
+function AvaSm({person}){
+  if(person && person.photo) return <img className="ava-sm" src={person.photo} alt=""/>;
+  return <div className="ava-sm">{person?initials(person.name):"?"}</div>;
+}
+
+/* ---------- list / Kartei ---------- */
+function Kartei({people,onOpen,onAdd,onSettings,today}){
+  const [q,setQ]=useState("");
+  const sorted = useMemo(()=>[...people].sort((a,b)=>a.name.localeCompare(b.name,"de")),[people]);
+  const filtered = useMemo(()=>{
+    const t=q.trim().toLowerCase();
+    if(!t) return sorted;
+    return sorted.filter(p=>{
+      const custom=(p.custom||[]).map(c=>(c.label||"")+" "+(c.value||"")).join(" ");
+      const hay=[p.name,p.gifts,p.notes,p.metWhere,p.color,custom].join(" ").toLowerCase();
+      return hay.includes(t);
+    });
+  },[sorted,q]);
+
+  const upcoming = useMemo(()=>{
+    return people.map(p=>({p,nb:nextBirthday(parseBday(p.birthday),today)}))
+      .filter(x=>x.nb && x.nb.days<=30)
+      .sort((a,b)=>a.nb.days-b.nb.days);
+  },[people,today]);
+
+  return (
+    <div>
+      <header className="top">
+        <div className="brand">
+          <h1>Torcon</h1>
+          <span className="ver">v{VERSION}</span>
+          <span className="sub">{people.length} {people.length===1?"Person":"Personen"}</span>
+        </div>
+        <input className="search" placeholder="Name, Ort, Vorliebe, Notiz…"
+          value={q} onChange={e=>setQ(e.target.value)} />
+      </header>
+      <div className="wrap">
+        {people.length===0 && (
+          <div className="empty">
+            <div className="e-title">Deine Kartei ist noch leer</div>
+            Lege die erste Person an und halte fest, was du dir merken willst.
+          </div>
+        )}
+
+        {!q && upcoming.length>0 && (
+          <>
+            <div className="sect-label">Geburtstage demnächst</div>
+            {upcoming.map(({p,nb})=>(
+              <div className="card" key={"u"+p.id} onClick={()=>onOpen(p.id)}>
+                <Avatar person={p}/>
+                <div>
+                  <div className="nm">{p.name}</div>
+                  <div className="meta">{fmtBday(parseBday(p.birthday))}
+                    {nb.turning!=null && nb.days>=0 ? ` · wird ${nb.turning}` : ""}</div>
+                </div>
+                <div className="bdaytag"><span className="big">{daysLabel(nb.days)}</span></div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {filtered.length>0 && (
+          <div className="sect-label">{q?`Treffer (${filtered.length})`:"Alle"}</div>
+        )}
+        {filtered.map(p=>{
+          const pb=parseBday(p.birthday); const age=currentAge(pb,today);
+          const metaParts=[];
+          if(pb) metaParts.push(fmtBday(pb)+(age!=null?` · ${age}`:""));
+          if((p.connections||[]).length) metaParts.push(`${p.connections.length} Verb.`);
+          return (
+            <div className="card" key={p.id} onClick={()=>onOpen(p.id)}>
+              <Avatar person={p}/>
+              <div>
+                <div className="nm">{p.name}</div>
+                {metaParts.length>0 && <div className="meta">{metaParts.join(" · ")}</div>}
+              </div>
+            </div>
+          );
+        })}
+        {q && filtered.length===0 && people.length>0 && (
+          <div className="empty">Keine Treffer für „{q}".</div>
+        )}
+      </div>
+      <div className="fab"><div className="fab-inner">
+        <button className="btn btn-ghost sm" onClick={onSettings} aria-label="Einstellungen">⚙︎</button>
+        <button className="btn btn-primary" onClick={onAdd}>+ Person anlegen</button>
+      </div></div>
+    </div>
+  );
+}
+
+/* ---------- detail ---------- */
+function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
+  if(!person) return null;
+  const pb=parseBday(person.birthday); const nb=nextBirthday(pb,today); const age=currentAge(pb,today);
+  const byId = id => people.find(p=>p.id===id);
+  const fields=[
+    {lab:"Geburtstag", val: pb ? (fmtBday(pb)
+        + (age!=null?` (wird ${nb.turning}, ${nb.days===0?"heute!":daysLabel(nb.days)})`
+                    :` (${nb.days===0?"heute!":daysLabel(nb.days)})`)) : ""},
+    {lab:"Wie kennengelernt", val:person.metWhere},
+    {lab:"Lieblingsfarbe / Blumen", val:person.color, color:true},
+    {lab:"Geschenk-Ideen / Vorlieben", val:person.gifts},
+    {lab:"Notizen", val:person.notes},
+  ].filter(f=>f.val && f.val.trim());
+
+  const guessSwatch = (txt)=>{
+    const map={rot:"#c0392b",blau:"#2c6fbf",grün:"#3f8a5a",gruen:"#3f8a5a",gelb:"#e2b13c",
+      orange:"#e07b2c",lila:"#8a5a9e",violett:"#8a5a9e",rosa:"#d98aa6","pink":"#d4548a",
+      schwarz:"#222",weiß:"#eee",weiss:"#eee",grau:"#9a9a9a",braun:"#8a6a4a",türkis:"#3aa9a0",tuerkis:"#3aa9a0"};
+    const k=Object.keys(map).find(c=>txt.toLowerCase().includes(c));
+    return k?map[k]:null;
+  };
+
+  return (
+    <div>
+      <div className="wrap">
+        <div className="navbar">
+          <button className="back" onClick={onBack}>‹ Kartei</button>
+        </div>
+        <div className="detail-head">
+          <Avatar person={person}/>
+          <div>
+            <h2>{person.name}</h2>
+            {pb && <div className="dh-sub">{fmtBday(pb)}{age!=null?` · ${age} Jahre`:""}</div>}
+          </div>
+        </div>
+
+        {fields.map((f,i)=>(
+          <div className="field" key={i}>
+            <div className="lab">{f.lab}</div>
+            <div className="val">
+              {f.color && guessSwatch(f.val) && <span className="swatch" style={{background:guessSwatch(f.val)}}/>}
+              {f.val}
+            </div>
+          </div>
+        ))}
+
+        {(person.custom||[]).filter(c=>c.label&&c.value).map((c,i)=>(
+          <div className="field" key={"c"+i}>
+            <div className="lab">{c.label}</div>
+            <div className="val">{c.value}</div>
+          </div>
+        ))}
+
+        {(person.connections||[]).length>0 && (
+          <div className="field">
+            <div className="lab">Verbindungen</div>
+            <div className="chips">
+              {person.connections.map((c,i)=>{
+                const other=byId(c.personId);
+                if(!other) return null;
+                return (
+                  <div className="chip" key={i} onClick={()=>onOpen(other.id)}>
+                    <AvaSm person={other}/>
+                    <span>{other.name}</span>
+                    <span className={"reltag t-"+c.type}>{c.type}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {fields.length===0 && !(person.connections||[]).length && !(person.custom||[]).some(c=>c.label&&c.value) && (
+          <div className="empty" style={{padding:"30px 10px"}}>Noch keine Infos hinterlegt. Tippe auf Bearbeiten.</div>
+        )}
+
+        <div className="divider"></div>
+        <div className="danger-zone">
+          <button className="btn btn-soft" style={{flex:1}} onClick={onEdit}>Bearbeiten</button>
+          <button className="btn btn-danger" onClick={()=>{ if(confirm(`„${person.name}" wirklich löschen?`)) onDelete(person.id); }}>Löschen</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- edit form ---------- */
+function EditPerson({person,people,onCancel,onSave,today}){
+  const isNew = !person;
+  const [name,setName]=useState(person?.name||"");
+  const [photo,setPhoto]=useState(person?.photo||null);
+  const pb=parseBday(person?.birthday);
+  const [bdayDate,setBdayDate]=useState(pb&&pb.hasYear?person.birthday:(pb?`2000-${String(pb.m).padStart(2,"0")}-${String(pb.d).padStart(2,"0")}`:""));
+  const [noYear,setNoYear]=useState(pb?!pb.hasYear:false);
+  const [metWhere,setMetWhere]=useState(person?.metWhere||"");
+  const [color,setColor]=useState(person?.color||"");
+  const [gifts,setGifts]=useState(person?.gifts||"");
+  const [notes,setNotes]=useState(person?.notes||"");
+  const [custom,setCustom]=useState(person?.custom?JSON.parse(JSON.stringify(person.custom)):[]);
+  const [conns,setConns]=useState(person?.connections?JSON.parse(JSON.stringify(person.connections)):[]);
+  const fileRef=useRef();
+
+  const onFile=(e)=>{ const f=e.target.files[0]; if(f) compressImage(f,(d)=>{ if(d) setPhoto(d); }); };
+
+  const others = people.filter(p=>!person || p.id!==person.id)
+    .filter(p=>!conns.some(c=>c.personId===p.id))
+    .sort((a,b)=>a.name.localeCompare(b.name,"de"));
+  const [addId,setAddId]=useState("");
+  const [addType,setAddType]=useState("Freund");
+  const addConn=()=>{ if(!addId) return; setConns([...conns,{personId:addId,type:addType}]); setAddId(""); setAddType("Freund"); };
+
+  const setCustomField=(i,k,v)=>{ const n=[...custom]; n[i]={...n[i],[k]:v}; setCustom(n); };
+
+  const handleSave=()=>{
+    if(!name.trim()){ alert("Bitte einen Namen eingeben."); return; }
+    let birthday=null;
+    if(bdayDate){
+      if(noYear){ const [,m,d]=bdayDate.split("-"); birthday=`--${m}-${d}`; }
+      else birthday=bdayDate;
+    }
+    const cleanCustom=custom.filter(c=>(c.label&&c.label.trim())||(c.value&&c.value.trim()));
+    onSave({
+      id:person?.id||uid(),
+      name:name.trim(), photo, birthday, metWhere:metWhere.trim(),
+      color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
+      custom:cleanCustom, connections:conns,
+      created:person?.created||Date.now(), updated:Date.now(),
+    });
+  };
+
+  const byId = id => people.find(p=>p.id===id);
+
+  return (
+    <div className="wrap">
+      <div className="navbar">
+        <button className="back" onClick={onCancel}>‹ Abbrechen</button>
+      </div>
+      <h2 style={{fontFamily:"var(--serif)",fontWeight:600,fontSize:24,margin:"6px 2px 2px"}}>
+        {isNew?"Neue Person":"Bearbeiten"}</h2>
+
+      <div className="form-group">
+        <label>Foto (optional)</label>
+        <div className="photo-pick">
+          <div className="avatar" onClick={()=>fileRef.current.click()}>
+            {photo? <img src={photo} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}}/> : (name?initials(name):"+")}
+          </div>
+          <div>
+            <button type="button" className="btn btn-soft sm" onClick={()=>fileRef.current.click()}>Bild wählen</button>
+            {photo && <button type="button" className="inline-rm" style={{marginLeft:12}} onClick={()=>setPhoto(null)}>entfernen</button>}
+            <div className="hint">Wird klein gerechnet und lokal gespeichert.</div>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={onFile}/>
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label>Name</label>
+        <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Vor- und Nachname"/>
+      </div>
+
+      <div className="form-group">
+        <label>Geburtstag</label>
+        <input type="date" value={bdayDate} onChange={e=>setBdayDate(e.target.value)}/>
+        <label style={{display:"flex",alignItems:"center",gap:8,marginTop:8,fontWeight:400,fontSize:14,color:"var(--muted)"}}>
+          <input type="checkbox" style={{width:"auto"}} checked={noYear} onChange={e=>setNoYear(e.target.checked)}/>
+          Jahr unbekannt (nur Tag und Monat merken)
+        </label>
+      </div>
+
+      <div className="form-group">
+        <label>Wie kennengelernt</label>
+        <input type="text" value={metWhere} onChange={e=>setMetWhere(e.target.value)} placeholder="z.B. Uni, über Lisa, Nachbarschaft"/>
+      </div>
+
+      <div className="form-group">
+        <label>Lieblingsfarbe / Blumen</label>
+        <input type="text" value={color} onChange={e=>setColor(e.target.value)} placeholder="z.B. Grün, Pfingstrosen"/>
+      </div>
+
+      <div className="form-group">
+        <label>Geschenk-Ideen / Vorlieben</label>
+        <textarea value={gifts} onChange={e=>setGifts(e.target.value)} placeholder="Was kommt gut an, was gar nicht…"/>
+      </div>
+
+      <div className="form-group">
+        <label>Notizen</label>
+        <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Alles weitere, das du dir merken willst"/>
+      </div>
+
+      <div className="form-group">
+        <label>Eigene Felder</label>
+        {custom.map((c,i)=>(
+          <div className="custom-row" key={i}>
+            <input type="text" value={c.label} placeholder="Feld" onChange={e=>setCustomField(i,"label",e.target.value)}/>
+            <input type="text" value={c.value} placeholder="Inhalt" onChange={e=>setCustomField(i,"value",e.target.value)}/>
+            <button type="button" className="btn btn-soft sm" onClick={()=>setCustom(custom.filter((_,j)=>j!==i))}>✕</button>
+          </div>
+        ))}
+        <button type="button" className="btn btn-ghost sm btn-block" style={{marginTop:8}}
+          onClick={()=>setCustom([...custom,{label:"",value:""}])}>+ Feld hinzufügen</button>
+      </div>
+
+      <div className="form-group">
+        <label>Verbindungen</label>
+        {conns.map((c,i)=>{
+          const o=byId(c.personId);
+          return (
+            <div className="custom-row" key={i} style={{alignItems:"center"}}>
+              <div style={{flex:"1 1 auto",display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+                <AvaSm person={o}/>
+                <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o?o.name:"(gelöscht)"}</span>
+              </div>
+              <select style={{flex:"0 0 130px"}} value={c.type} onChange={e=>{const n=[...conns];n[i]={...n[i],type:e.target.value};setConns(n);}}>
+                {REL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+              <button type="button" className="btn btn-soft sm" onClick={()=>setConns(conns.filter((_,j)=>j!==i))}>✕</button>
+            </div>
+          );
+        })}
+        {others.length>0 ? (
+          <div className="conn-add">
+            <select value={addId} onChange={e=>setAddId(e.target.value)}>
+              <option value="">Person wählen…</option>
+              {others.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <div className="seg" style={{marginTop:8}}>
+              {REL_TYPES.map(t=>(
+                <button type="button" key={t} className={(addType===t?"on t-"+t:"")} onClick={()=>setAddType(t)}>{t}</button>
+              ))}
+            </div>
+            <button type="button" className="btn btn-soft sm btn-block" style={{marginTop:10}} disabled={!addId} onClick={addConn}>+ Verbindung hinzufügen</button>
+          </div>
+        ) : (
+          <div className="hint">{people.length<=1?"Lege weitere Personen an, um sie zu verbinden.":"Alle anderen sind bereits verbunden."}</div>
+        )}
+      </div>
+
+      <div className="danger-zone">
+        <button className="btn btn-ghost" style={{flex:"0 0 40%"}} onClick={onCancel}>Abbrechen</button>
+        <button className="btn btn-primary" style={{flex:1}} onClick={handleSave}>Speichern</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- settings ---------- */
+function Settings({people,ideas,onBack,onImport,onAddIdea,onRemoveIdea,onToggleIdea,toast}){
+  const fileRef=useRef();
+  const [ideaText,setIdeaText]=useState("");
+  const doExport=()=>{
+    const blob=new Blob([JSON.stringify({app:"Torcon",version:VERSION,exported:new Date().toISOString(),people,ideas},null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    const d=new Date().toISOString().slice(0,10);
+    a.href=url; a.download=`torcon-export-${d}.json`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast("Export gestartet");
+  };
+  const onFile=(e)=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        const imported=Array.isArray(data)?data:data.people;
+        if(!Array.isArray(imported)) throw new Error();
+        onImport(imported, Array.isArray(data.ideas)?data.ideas:[]);
+      }catch(err){ alert("Datei konnte nicht gelesen werden. Erwartet wird ein Torcon-Export (JSON)."); }
+    };
+    r.readAsText(f);
+    e.target.value="";
+  };
+  return (
+    <div className="wrap">
+      <div className="navbar"><button className="back" onClick={onBack}>‹ Kartei</button></div>
+      <h2 style={{fontFamily:"var(--serif)",fontWeight:600,fontSize:24,margin:"6px 2px 2px"}}>Einstellungen</h2>
+
+      <div className="sect-label" style={{marginTop:20}}>Daten</div>
+      <div className="field">
+        <div className="lab">Sicherung</div>
+        <div className="val" style={{fontSize:14,color:"var(--muted)"}}>
+          {people.length} {people.length===1?"Person":"Personen"} gespeichert. Alles liegt nur lokal auf diesem Gerät.
+        </div>
+        <div className="settings-list">
+          <button className="btn btn-soft btn-block" onClick={doExport}>Als JSON exportieren</button>
+          <button className="btn btn-ghost btn-block" onClick={()=>fileRef.current.click()}>Aus JSON importieren</button>
+          <input ref={fileRef} type="file" accept="application/json,.json" style={{display:"none"}} onChange={onFile}/>
+          <div className="hint">Import fügt importierte Personen hinzu bzw. aktualisiert vorhandene (gleiche ID).</div>
+        </div>
+      </div>
+
+      <div className="sect-label" style={{marginTop:24}}>Ideen</div>
+      <div className="field">
+        <div className="lab">Notizzettel für die App</div>
+        <div className="custom-row" style={{marginTop:8}}>
+          <input style={{flex:1}} type="text" value={ideaText} placeholder="Neue Idee…"
+            onChange={e=>setIdeaText(e.target.value)}
+            onKeyDown={e=>{ if(e.key==="Enter"&&ideaText.trim()){ onAddIdea(ideaText.trim()); setIdeaText(""); } }}/>
+          <button className="btn btn-soft sm" disabled={!ideaText.trim()}
+            onClick={()=>{ onAddIdea(ideaText.trim()); setIdeaText(""); }}>+</button>
+        </div>
+        {ideas.length===0 && <div className="hint" style={{marginTop:8}}>Noch keine Ideen notiert.</div>}
+        {ideas.map(it=>(
+          <div className="idea-row" key={it.id}>
+            <button className={"idea-check"+(it.done?" on":"")} onClick={()=>onToggleIdea(it.id)} aria-label="erledigt">{it.done?"✓":""}</button>
+            <span className={"idea-text"+(it.done?" done":"")}>{it.text}</span>
+            <button className="inline-rm" onClick={()=>onRemoveIdea(it.id)}>✕</button>
+          </div>
+        ))}
+      </div>
+
+      <div className="sect-label" style={{marginTop:24}}>Versionshistorie</div>
+      {CHANGELOG.map(c=>(
+        <div className="field" key={c.v}>
+          <div className="lab">Version {c.v}{c.v===VERSION?" · aktuell":""}</div>
+          <div className="val" style={{fontSize:14.5}}>{c.d}</div>
+        </div>
+      ))}
+
+      <div className="sect-label" style={{marginTop:24}}>Info</div>
+      <div className="field">
+        <div className="lab">Torcon</div>
+        <div className="val" style={{fontSize:14}}>Version {VERSION} · Torben Connections</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- app ---------- */
+function App(){
+  const _init = useMemo(()=>loadStore(),[]);
+  const [people,setPeople]=useState(_init.people);
+  const [ideas,setIdeas]=useState(_init.ideas);
+  const [view,setView]=useState({name:"list"}); // list | detail(id) | edit(id|null) | settings
+  const [toastMsg,setToastMsg]=useState(null);
+  const today=useMemo(()=>new Date(),[]);
+  useEffect(()=>{ saveStore(people, ideas); },[people, ideas]);
+  const toast=(m)=>{ setToastMsg(m); setTimeout(()=>setToastMsg(null),1900); };
+
+  const addIdea=(text)=>setIdeas(prev=>[{id:uid(),text,done:false,created:Date.now()},...prev]);
+  const removeIdea=(id)=>setIdeas(prev=>prev.filter(i=>i.id!==id));
+  const toggleIdea=(id)=>setIdeas(prev=>prev.map(i=>i.id===id?{...i,done:!i.done}:i));
+
+  const byId = id => people.find(p=>p.id===id);
+
+  // reciprocal connections
+  const syncConnections = (list, savedId, conns) => {
+    return list.map(p=>{
+      if(p.id===savedId) return p;
+      const shouldHave = conns.find(c=>c.personId===p.id);
+      let pc=(p.connections||[]).filter(c=>c.personId!==savedId);
+      if(shouldHave) pc=[...pc,{personId:savedId,type:shouldHave.type}];
+      return {...p,connections:pc};
+    });
+  };
+
+  const savePerson=(person)=>{
+    setPeople(prev=>{
+      const exists=prev.some(p=>p.id===person.id);
+      let next=exists?prev.map(p=>p.id===person.id?person:p):[...prev,person];
+      next=syncConnections(next, person.id, person.connections||[]);
+      return next;
+    });
+    setView({name:"detail",id:person.id});
+    toast(byId(person.id)?"Gespeichert":"Person angelegt");
+  };
+
+  const deletePerson=(id)=>{
+    setPeople(prev=>prev.filter(p=>p.id!==id)
+      .map(p=>({...p,connections:(p.connections||[]).filter(c=>c.personId!==id)})));
+    setView({name:"list"});
+    toast("Gelöscht");
+  };
+
+  const importPeople=(imported, importedIdeas=[])=>{
+    setPeople(prev=>{
+      const map=new Map(prev.map(p=>[p.id,p]));
+      let added=0,updated=0;
+      imported.forEach(p=>{
+        if(!p||!p.id||!p.name) return;
+        if(map.has(p.id)) updated++; else added++;
+        map.set(p.id,p);
+      });
+      toast(`${added} neu, ${updated} aktualisiert`);
+      return Array.from(map.values());
+    });
+    if(importedIdeas.length){
+      setIdeas(prev=>{
+        const have=new Set(prev.map(i=>i.id));
+        const add=importedIdeas.filter(i=>i&&i.id&&!have.has(i.id));
+        return [...add, ...prev];
+      });
+    }
+  };
+
+  let body;
+  if(view.name==="list")
+    body=<Kartei people={people} today={today}
+      onOpen={id=>setView({name:"detail",id})}
+      onAdd={()=>setView({name:"edit",id:null})}
+      onSettings={()=>setView({name:"settings"})}/>;
+  else if(view.name==="detail")
+    body=<Detail person={byId(view.id)} people={people} today={today}
+      onBack={()=>setView({name:"list"})}
+      onEdit={()=>setView({name:"edit",id:view.id})}
+      onOpen={id=>setView({name:"detail",id})}
+      onDelete={deletePerson}/>;
+  else if(view.name==="edit")
+    body=<EditPerson person={view.id?byId(view.id):null} people={people} today={today}
+      onCancel={()=>setView(view.id?{name:"detail",id:view.id}:{name:"list"})}
+      onSave={savePerson}/>;
+  else if(view.name==="settings")
+    body=<Settings people={people} ideas={ideas} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} toast={toast}/>;
+
+  return <>{body}{toastMsg && <div className="toast">{toastMsg}</div>}</>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
