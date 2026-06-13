@@ -176,7 +176,7 @@
   .me-toggle input{width:auto}
   .me-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
     color:#fff;background:var(--accent);border-radius:999px;padding:2px 8px;margin-left:9px;vertical-align:2px}
-  .gfilter{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;-webkit-overflow-scrolling:touch}
+  .gfilter{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 12px}
   .gchip{flex:0 0 auto;background:var(--surface);border:1px solid var(--line);border-radius:999px;
     padding:7px 14px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
   .gchip.on{background:var(--ink);color:#fff;border-color:transparent}
@@ -200,9 +200,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.12";
+const VERSION = "1.13";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.13", d:"Verbindung hinzufügen als kompakte Namensliste, Suche auch nach Gruppe. Gruppenmitglieder erscheinen im Netz. Gruppenfilter bricht um statt seitwärts zu scrollen."},
   {v:"1.12", d:"Netz erkunden: ein Gesicht antippen macht es zum Mittelpunkt, die Mitte antippen öffnet das Profil. „Zu mir“ springt zurück."},
   {v:"1.11", d:"Verbindung hinzufügen mit Suchfeld statt langer Liste: Typ wählen, Person suchen, antippen."},
   {v:"1.10", d:"Die Ich-Markierung sitzt jetzt einmalig in den Einstellungen statt in jedem Profil."},
@@ -646,7 +647,12 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
   const [connQuery,setConnQuery]=useState("");
   const [addType,setAddType]=useState("Freund");
   const addConnNow=(pid)=>{ setConns([...conns,{personId:pid,type:addType}]); setConnQuery(""); };
-  const otherMatches=others.filter(p=>p.name.toLowerCase().includes(connQuery.trim().toLowerCase()));
+  const groupNameById=(id)=>(groups.find(g=>g.id===id)||{}).name||"";
+  const otherMatches=others.filter(p=>{
+    const t=connQuery.trim().toLowerCase(); if(!t) return true;
+    const g=(p.groups||[]).map(groupNameById).join(" ");
+    return (p.name+" "+g).toLowerCase().includes(t);
+  });
 
   const setCustomField=(i,k,v)=>{ const n=[...custom]; n[i]={...n[i],[k]:v}; setCustom(n); };
   const setSecretField=(i,k,v)=>{ const n=[...secret]; n[i]={...n[i],[k]:v}; setSecret(n); };
@@ -796,12 +802,11 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
                 <button type="button" key={t} className={(addType===t?"on t-"+t:"")} onClick={()=>setAddType(t)}>{t}</button>
               ))}
             </div>
-            <input className="conn-search" type="text" value={connQuery} placeholder="Person suchen und antippen…"
+            <input className="conn-search" type="text" value={connQuery} placeholder="Name oder Gruppe…"
               onChange={e=>setConnQuery(e.target.value)}/>
             <div className="conn-list">
               {otherMatches.map(p=>(
                 <button type="button" className="conn-row" key={p.id} onClick={()=>addConnNow(p.id)}>
-                  <AvaSm person={p}/>
                   <span className="conn-nm">{p.name}</span>
                   <span className="conn-plus">+ {addType}</span>
                 </button>
@@ -984,10 +989,13 @@ function StarGraph({people,onBack,onOpen}){
     inner=<div className="empty"><div className="e-title">Kein Mittelpunkt gesetzt</div>
       Wähle in den Einstellungen unter „Ich", wer du bist, dann erscheint hier dein Netz.</div>;
   } else if(center){
-    const direct=(center.connections||[]).map(c=>({person:byId(c.personId),type:c.type})).filter(x=>x.person);
+    const directConns=(center.connections||[]).map(c=>({person:byId(c.personId),type:c.type,group:false})).filter(x=>x.person);
+    const directIds=new Set(directConns.map(d=>d.person.id));
+    const coGroup=people.filter(p=>p.id!==center.id && !directIds.has(p.id) && (p.groups||[]).some(g=>(center.groups||[]).includes(g))).map(p=>({person:p,type:null,group:true}));
+    const all=[...directConns,...coGroup];
     const VB=1000, cx=500, cy=500, R=360;
-    const pos=direct.map((d,i)=>{ const a=(-90+i*360/direct.length)*Math.PI/180;
-      return {person:d.person,type:d.type,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
+    const pos=all.map((d,i)=>{ const a=(-90+i*360/all.length)*Math.PI/180;
+      return {person:d.person,type:d.type,group:d.group,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
     const posById={}; pos.forEach(p=>posById[p.person.id]=p);
     const links=[];
     pos.forEach(p=>{ (p.person.connections||[]).forEach(c=>{ const q=posById[c.personId];
@@ -996,12 +1004,14 @@ function StarGraph({people,onBack,onOpen}){
     inner=(
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
-          {pos.map((p,i)=><line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={REL_COLOR[p.type]||"#c9c2b8"} strokeWidth="4" opacity="0.55"/>)}
+          {pos.map((p,i)=> p.group
+            ? <line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#b0a99e" strokeWidth="3" strokeDasharray="3 8" opacity="0.7"/>
+            : <line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={REL_COLOR[p.type]||"#c9c2b8"} strokeWidth="4" opacity="0.55"/>)}
           {links.map((l,i)=><line key={"l"+i} x1={l.a.x} y1={l.a.y} x2={l.b.x} y2={l.b.y} stroke="#d3ccc1" strokeWidth="3" strokeDasharray="2 6"/>)}
-          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={78} ring={REL_COLOR[p.type]} onTap={()=>setCenterId(p.person.id)}/>)}
+          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={78} ring={p.group?"#b0a99e":REL_COLOR[p.type]} onTap={()=>setCenterId(p.person.id)}/>)}
           <Face p={center} x={cx} y={cy} r={96} ring={centerRing} bold={true} onTap={()=>onOpen(center.id)}/>
         </svg>
-        {direct.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.name} hat noch keine Verbindungen.</div>}
+        {all.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.name} hat noch keine Verbindungen oder Gruppen.</div>}
       </div>
     );
   }
