@@ -135,6 +135,16 @@
   .idea-check.on{background:var(--fam);border-color:transparent}
   .idea-text{flex:1;font-size:15px;word-break:break-word}
   .idea-text.done{text-decoration:line-through;color:var(--muted)}
+  .hist-toggle{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);
+    border-radius:13px;padding:13px 15px;font-size:15px;font-weight:600;color:var(--ink);cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;font-family:var(--sans)}
+  .hist-toggle .chev{color:var(--muted);font-size:13px;font-weight:600}
+  .update-bar{background:var(--accent);color:#fff;display:flex;align-items:center;gap:10px;
+    padding:11px 16px;font-size:14px;font-weight:500}
+  .update-bar span{flex:1}
+  .update-bar .ub-load{background:#fff;color:var(--accent);border:none;border-radius:9px;
+    padding:7px 13px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+  .update-bar .ub-x{background:none;border:none;color:rgba(255,255,255,.85);font-size:15px;cursor:pointer;padding:4px}
   .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:var(--ink);
     color:#fff;padding:11px 18px;border-radius:11px;font-size:14px;z-index:60;
     box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%}
@@ -147,9 +157,12 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.1";
+const VERSION = "1.4";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.4", d:"Versionshistorie ausklappbar, Hinweis wenn eine neue Version zum Laden bereitsteht."},
+  {v:"1.3", d:"Beruf als eigenes Feld, wird auch durchsucht."},
+  {v:"1.2", d:"Foto direkt per Kamera aufnehmen oder aus der Galerie wählen."},
   {v:"1.1", d:"Versionshistorie und Ideen-Notizen, Suche auch nach Ort des Kennenlernens und eigenen Feldern, Icon und Installation auf dem Startbildschirm."},
   {v:"1.0", d:"Erste Version: Kartei mit Personen, Foto, Standard- und eigenen Feldern, Verbindungen mit Typ, Geburtstage und Export/Import."},
 ];
@@ -253,7 +266,7 @@ function Kartei({people,onOpen,onAdd,onSettings,today}){
     if(!t) return sorted;
     return sorted.filter(p=>{
       const custom=(p.custom||[]).map(c=>(c.label||"")+" "+(c.value||"")).join(" ");
-      const hay=[p.name,p.gifts,p.notes,p.metWhere,p.color,custom].join(" ").toLowerCase();
+      const hay=[p.name,p.job,p.gifts,p.notes,p.metWhere,p.color,custom].join(" ").toLowerCase();
       return hay.includes(t);
     });
   },[sorted,q]);
@@ -306,6 +319,7 @@ function Kartei({people,onOpen,onAdd,onSettings,today}){
         {filtered.map(p=>{
           const pb=parseBday(p.birthday); const age=currentAge(pb,today);
           const metaParts=[];
+          if(p.job&&p.job.trim()) metaParts.push(p.job);
           if(pb) metaParts.push(fmtBday(pb)+(age!=null?` · ${age}`:""));
           if((p.connections||[]).length) metaParts.push(`${p.connections.length} Verb.`);
           return (
@@ -336,6 +350,7 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
   const pb=parseBday(person.birthday); const nb=nextBirthday(pb,today); const age=currentAge(pb,today);
   const byId = id => people.find(p=>p.id===id);
   const fields=[
+    {lab:"Beruf", val:person.job},
     {lab:"Geburtstag", val: pb ? (fmtBday(pb)
         + (age!=null?` (wird ${nb.turning}, ${nb.days===0?"heute!":daysLabel(nb.days)})`
                     :` (${nb.days===0?"heute!":daysLabel(nb.days)})`)) : ""},
@@ -421,6 +436,7 @@ function Detail({person,people,onBack,onEdit,onOpen,onDelete,today}){
 function EditPerson({person,people,onCancel,onSave,today}){
   const isNew = !person;
   const [name,setName]=useState(person?.name||"");
+  const [job,setJob]=useState(person?.job||"");
   const [photo,setPhoto]=useState(person?.photo||null);
   const pb=parseBday(person?.birthday);
   const [bdayDate,setBdayDate]=useState(pb&&pb.hasYear?person.birthday:(pb?`2000-${String(pb.m).padStart(2,"0")}-${String(pb.d).padStart(2,"0")}`:""));
@@ -431,9 +447,10 @@ function EditPerson({person,people,onCancel,onSave,today}){
   const [notes,setNotes]=useState(person?.notes||"");
   const [custom,setCustom]=useState(person?.custom?JSON.parse(JSON.stringify(person.custom)):[]);
   const [conns,setConns]=useState(person?.connections?JSON.parse(JSON.stringify(person.connections)):[]);
-  const fileRef=useRef();
+  const galleryRef=useRef();
+  const camRef=useRef();
 
-  const onFile=(e)=>{ const f=e.target.files[0]; if(f) compressImage(f,(d)=>{ if(d) setPhoto(d); }); };
+  const onFile=(e)=>{ const f=e.target.files[0]; if(f) compressImage(f,(d)=>{ if(d) setPhoto(d); }); e.target.value=""; };
 
   const others = people.filter(p=>!person || p.id!==person.id)
     .filter(p=>!conns.some(c=>c.personId===p.id))
@@ -454,7 +471,7 @@ function EditPerson({person,people,onCancel,onSave,today}){
     const cleanCustom=custom.filter(c=>(c.label&&c.label.trim())||(c.value&&c.value.trim()));
     onSave({
       id:person?.id||uid(),
-      name:name.trim(), photo, birthday, metWhere:metWhere.trim(),
+      name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
       custom:cleanCustom, connections:conns,
       created:person?.created||Date.now(), updated:Date.now(),
@@ -474,21 +491,30 @@ function EditPerson({person,people,onCancel,onSave,today}){
       <div className="form-group">
         <label>Foto (optional)</label>
         <div className="photo-pick">
-          <div className="avatar" onClick={()=>fileRef.current.click()}>
+          <div className="avatar" onClick={()=>camRef.current.click()}>
             {photo? <img src={photo} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}}/> : (name?initials(name):"+")}
           </div>
-          <div>
-            <button type="button" className="btn btn-soft sm" onClick={()=>fileRef.current.click()}>Bild wählen</button>
-            {photo && <button type="button" className="inline-rm" style={{marginLeft:12}} onClick={()=>setPhoto(null)}>entfernen</button>}
+          <div style={{flex:1}}>
+            <div className="row" style={{gap:8}}>
+              <button type="button" className="btn btn-soft sm" onClick={()=>camRef.current.click()}>Foto aufnehmen</button>
+              <button type="button" className="btn btn-ghost sm" onClick={()=>galleryRef.current.click()}>Galerie</button>
+            </div>
+            {photo && <button type="button" className="inline-rm" style={{marginTop:8}} onClick={()=>setPhoto(null)}>Foto entfernen</button>}
             <div className="hint">Wird klein gerechnet und lokal gespeichert.</div>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={onFile}/>
+          <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={onFile}/>
+          <input ref={galleryRef} type="file" accept="image/*" style={{display:"none"}} onChange={onFile}/>
         </div>
       </div>
 
       <div className="form-group">
         <label>Name</label>
         <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Vor- und Nachname"/>
+      </div>
+
+      <div className="form-group">
+        <label>Beruf</label>
+        <input type="text" value={job} onChange={e=>setJob(e.target.value)} placeholder="z.B. Ingenieurin, Lehrer"/>
       </div>
 
       <div className="form-group">
@@ -580,6 +606,7 @@ function EditPerson({person,people,onCancel,onSave,today}){
 function Settings({people,ideas,onBack,onImport,onAddIdea,onRemoveIdea,onToggleIdea,toast}){
   const fileRef=useRef();
   const [ideaText,setIdeaText]=useState("");
+  const [histOpen,setHistOpen]=useState(false);
   const doExport=()=>{
     const blob=new Blob([JSON.stringify({app:"Torcon",version:VERSION,exported:new Date().toISOString(),people,ideas},null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
@@ -643,7 +670,11 @@ function Settings({people,ideas,onBack,onImport,onAddIdea,onRemoveIdea,onToggleI
       </div>
 
       <div className="sect-label" style={{marginTop:24}}>Versionshistorie</div>
-      {CHANGELOG.map(c=>(
+      <button className="hist-toggle" onClick={()=>setHistOpen(o=>!o)}>
+        <span>Version {VERSION} · aktuell</span>
+        <span className="chev">{histOpen?"▾ einklappen":"▸ alle anzeigen"}</span>
+      </button>
+      {histOpen && CHANGELOG.map(c=>(
         <div className="field" key={c.v}>
           <div className="lab">Version {c.v}{c.v===VERSION?" · aktuell":""}</div>
           <div className="val" style={{fontSize:14.5}}>{c.d}</div>
@@ -666,9 +697,30 @@ function App(){
   const [ideas,setIdeas]=useState(_init.ideas);
   const [view,setView]=useState({name:"list"}); // list | detail(id) | edit(id|null) | settings
   const [toastMsg,setToastMsg]=useState(null);
+  const [updateVer,setUpdateVer]=useState(null);
   const today=useMemo(()=>new Date(),[]);
   useEffect(()=>{ saveStore(people, ideas); },[people, ideas]);
   const toast=(m)=>{ setToastMsg(m); setTimeout(()=>setToastMsg(null),1900); };
+
+  useEffect(()=>{
+    let stopped=false;
+    const newer=(a,b)=>{ const pa=a.split(".").map(Number),pb=b.split(".").map(Number);
+      for(let i=0;i<Math.max(pa.length,pb.length);i++){ const x=pa[i]||0,y=pb[i]||0; if(x!==y) return x>y; } return false; };
+    const check=async()=>{
+      try{
+        const base=location.href.split("#")[0].split("?")[0];
+        const r=await fetch(base+"?_="+Date.now(),{cache:"no-store"});
+        if(!r.ok) return;
+        const t=await r.text();
+        const m=t.match(/const VERSION\s*=\s*"([\d.]+)"/);
+        if(m && !stopped && newer(m[1],VERSION)) setUpdateVer(m[1]);
+      }catch(e){}
+    };
+    check();
+    const onVis=()=>{ if(document.visibilityState==="visible") check(); };
+    document.addEventListener("visibilitychange",onVis);
+    return ()=>{ stopped=true; document.removeEventListener("visibilitychange",onVis); };
+  },[]);
 
   const addIdea=(text)=>setIdeas(prev=>[{id:uid(),text,done:false,created:Date.now()},...prev]);
   const removeIdea=(id)=>setIdeas(prev=>prev.filter(i=>i.id!==id));
@@ -745,7 +797,17 @@ function App(){
   else if(view.name==="settings")
     body=<Settings people={people} ideas={ideas} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} toast={toast}/>;
 
-  return <>{body}{toastMsg && <div className="toast">{toastMsg}</div>}</>;
+  return <>
+    {updateVer && (
+      <div className="update-bar">
+        <span>Neue Version v{updateVer} verfügbar.</span>
+        <button className="ub-load" onClick={()=>location.reload()}>Neu laden</button>
+        <button className="ub-x" onClick={()=>setUpdateVer(null)} aria-label="ausblenden">✕</button>
+      </div>
+    )}
+    {body}
+    {toastMsg && <div className="toast">{toastMsg}</div>}
+  </>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
