@@ -234,9 +234,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.24";
+const VERSION = "1.25";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.25", d:"Gruppen lassen sich anderen Gruppen unterordnen (Kreise in Kreisen). Die Startebene zeigt nur die obersten Kreise, das Öffnen zeigt Unterkreise plus direkte Leute. Neuer Zurück-Knopf im Netz geht eine Ebene hoch, zu mir springt ganz nach oben."},
   {v:"1.24", d:"Eigene und gruppierte angehängte Personen bleiben im Hauptkreis sichtbar (z.B. deine Tochter, die an dir hängt). Nur Randfiguren, die an andere gehängt und in keiner Gruppe sind, bleiben ausgeblendet."},
   {v:"1.23", d:"Die gehört-zu-Angabe hat jetzt ein Rollenfeld (z.B. Tochter, Sohn, Bekannter). Es wird im Profil und in der Angehängt-Liste statt des nackten bekannt-über angezeigt."},
   {v:"1.22", d:"Personen lassen sich als Kind markieren. Kinder bekommen im Netz und bei den Chips einen blauen Rand, Erwachsene einen neutralen, plus ein Kind-Label."},
@@ -1074,11 +1075,17 @@ const CHILD_RING="#3f86b8", ADULT_RING="#7a756d";
 function StarGraph({people,groups,onBack,onOpen}){
   const me=people.find(p=>p.isMe);
   const byId=id=>people.find(p=>p.id===id);
-  const [nav,setNav]=useState({mode:"home"});
+  const [stack,setStack]=useState([{mode:"home"}]);
+  const nav=stack[stack.length-1];
+  const push=(n)=>setStack(s=>[...s,n]);
+  const up=()=>setStack(s=>s.length>1?s.slice(0,-1):s);
+  const goHome=()=>setStack([{mode:"home"}]);
   const [q,setQ]=useState("");
   const VB=1000, cx=500, cy=500;
   const ringPos=(n,R)=>Array.from({length:n}).map((_,i)=>{ const a=(-90+(n===1?0:i*360/n))*Math.PI/180; return {x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
-  const goPerson=(id)=>{ setQ(""); if(id===(me&&me.id)) setNav({mode:"home"}); else setNav({mode:"person",personId:id}); };
+  const goPerson=(id)=>{ setQ(""); if(id===(me&&me.id)) goHome(); else push({mode:"person",personId:id}); };
+  const childrenOf=(gid)=>groups.filter(g=>g.parent===gid);
+  const descendantsOf=(gid)=>{ const acc=[]; const rec=(id)=>{ groups.filter(g=>g.parent===id).forEach(c=>{ acc.push(c.id); rec(c.id); }); }; rec(gid); return acc; };
 
   const Face=({p,x,y,r,ring,bold,onTap})=>{
     const cid="cl_"+p.id;
@@ -1108,20 +1115,22 @@ function StarGraph({people,groups,onBack,onOpen}){
     inner=<div className="empty"><div className="e-title">Kein Mittelpunkt gesetzt</div>
       Wähle in den Einstellungen unter „Ich", wer du bist, dann erscheint hier dein Netz.</div>;
   } else if(nav.mode==="home"){
-    const topLevel=people.filter(p=> p.id!==me.id && (!p.via || p.via===me.id || (p.groups||[]).length>0));
-    const gb=groups.map((g,idx)=>({g,members:topLevel.filter(p=>(p.groups||[]).includes(g.id)),color:BUBBLE_COLORS[idx%BUBBLE_COLORS.length]})).filter(x=>x.members.length>0);
-    const ungrouped=topLevel.filter(p=>!(p.groups||[]).length);
-    const items=gb.map(x=>({type:"group",g:x.g,count:x.members.length,color:x.color}));
+    const circle=people.filter(p=> p.id!==me.id && (!p.via || p.via===me.id || (p.groups||[]).length>0));
+    const rolled=(gid)=>{ const ids=new Set([gid,...descendantsOf(gid)]); return circle.filter(p=>(p.groups||[]).some(g=>ids.has(g))); };
+    const topGroups=groups.filter(g=>!g.parent);
+    const gb=topGroups.map((g,idx)=>({g,count:rolled(g.id).length,color:BUBBLE_COLORS[idx%BUBBLE_COLORS.length]})).filter(x=>x.count>0);
+    const ungrouped=circle.filter(p=>!(p.groups||[]).length);
+    const items=gb.map(x=>({type:"group",g:x.g,count:x.count,color:x.color}));
     if(ungrouped.length) items.push({type:"none",count:ungrouped.length,color:"#9a948b"});
     const R=items.length?360:0;
     const P=ringPos(items.length,R);
     const br=Math.max(58,Math.min(108, Math.round(1300/Math.max(6,items.length))));
-    title=<div className="graph-title">Dein Netz<span className="graph-hint">Tippe eine Gruppe an, um ihre Leute zu sehen</span></div>;
+    title=<div className="graph-title">Dein Netz<span className="graph-hint">Tippe einen Kreis an, um hineinzugehen</span></div>;
     inner=(
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
           {items.map((it,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={it.color} strokeWidth="4" opacity="0.4"/>)}
-          {items.map((it,i)=><Bubble key={i} label={it.type==="none"?"Ohne Gruppe":it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} onTap={()=>setNav({mode:"group",groupId:it.type==="none"?"__none":it.g.id,color:it.color})}/>)}
+          {items.map((it,i)=><Bubble key={i} label={it.type==="none"?"Ohne Gruppe":it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} onTap={()=>push({mode:"group",groupId:it.type==="none"?"__none":it.g.id,color:it.color})}/>)}
           <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={()=>onOpen(me.id)}/>
         </svg>
         {items.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Noch keine Gruppen mit Leuten. Ordne Personen beim Bearbeiten Gruppen zu.</div>}
@@ -1130,19 +1139,32 @@ function StarGraph({people,groups,onBack,onOpen}){
   } else if(nav.mode==="group"){
     const isNone=nav.groupId==="__none";
     const g=isNone?null:groups.find(x=>x.id===nav.groupId);
-    const members=people.filter(p=> p.id!==me.id && (!p.via || p.via===me.id || (p.groups||[]).length>0) && (isNone?!(p.groups||[]).length:(p.groups||[]).includes(nav.groupId)));
-    const R=members.length?360:0;
-    const P=ringPos(members.length,R);
-    const fr=Math.max(48,Math.min(80, Math.round(1150/Math.max(7,members.length))));
-    title=<div className="graph-title">{isNone?"Ohne Gruppe":(g?g.name:"Gruppe")}<span className="graph-hint">Tippe eine Person an, um weiterzugehen</span></div>;
+    const circle=people.filter(p=> p.id!==me.id && (!p.via || p.via===me.id || (p.groups||[]).length>0));
+    const rolled=(gid)=>{ const ids=new Set([gid,...descendantsOf(gid)]); return circle.filter(p=>(p.groups||[]).some(gg=>ids.has(gg))); };
+    const items=[];
+    if(isNone){
+      circle.filter(p=>!(p.groups||[]).length).forEach(p=>items.push({type:"person",p}));
+    } else {
+      const descIds=new Set(descendantsOf(nav.groupId));
+      childrenOf(nav.groupId).forEach((c,idx)=>items.push({type:"group",g:c,count:rolled(c.id).length,color:BUBBLE_COLORS[idx%BUBBLE_COLORS.length]}));
+      circle.filter(p=>(p.groups||[]).includes(nav.groupId) && !(p.groups||[]).some(x=>descIds.has(x))).forEach(p=>items.push({type:"person",p}));
+    }
+    const R=items.length?360:0;
+    const P=ringPos(items.length,R);
+    const fr=Math.max(48,Math.min(80, Math.round(1150/Math.max(7,items.length))));
+    const br=Math.max(54,Math.min(96, Math.round(1200/Math.max(6,items.length))));
+    title=<div className="graph-title">{isNone?"Ohne Gruppe":(g?g.name:"Gruppe")}<span className="graph-hint">Tippe an, um weiterzugehen</span></div>;
     inner=(
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
-          {members.map((m,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={nav.color||"#c9c2b8"} strokeWidth="4" opacity="0.5"/>)}
-          {members.map((m,i)=><Face key={m.id} p={m} x={P[i].x} y={P[i].y} r={fr} ring={m.child?CHILD_RING:ADULT_RING} onTap={()=>goPerson(m.id)}/>)}
-          <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={()=>setNav({mode:"home"})}/>
+          {items.map((it,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={it.type==="group"?it.color:(nav.color||"#c9c2b8")} strokeWidth="4" opacity="0.5"/>)}
+          {items.map((it,i)=> it.type==="group"
+            ? <Bubble key={"b"+it.g.id} label={it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} onTap={()=>push({mode:"group",groupId:it.g.id,color:it.color})}/>
+            : <Face key={it.p.id} p={it.p} x={P[i].x} y={P[i].y} r={fr} ring={it.p.child?CHILD_RING:ADULT_RING} onTap={()=>goPerson(it.p.id)}/>
+          )}
+          <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={goHome}/>
         </svg>
-        {members.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Niemand in dieser Gruppe.</div>}
+        {items.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Hier ist noch niemand.</div>}
       </div>
     );
   } else {
@@ -1163,7 +1185,7 @@ function StarGraph({people,groups,onBack,onOpen}){
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
           {nodes.map((nd,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={LINE[nd.kind]||"#c9c2b8"} strokeWidth={nd.kind==="group"?3:4} opacity="0.55" strokeDasharray={nd.kind==="group"?"3 8":"0"}/>)}
-          {nodes.map((nd,i)=><Face key={nd.person.id} p={nd.person} x={P[i].x} y={P[i].y} r={fr} ring={nd.person.child?CHILD_RING:ADULT_RING} onTap={()=> nd.kind==="me"? setNav({mode:"home"}) : goPerson(nd.person.id)}/>)}
+          {nodes.map((nd,i)=><Face key={nd.person.id} p={nd.person} x={P[i].x} y={P[i].y} r={fr} ring={nd.person.child?CHILD_RING:ADULT_RING} onTap={()=> nd.kind==="me"? goHome() : goPerson(nd.person.id)}/>)}
           <Face p={center} x={cx} y={cy} r={96} ring={center.child?CHILD_RING:"#23201d"} bold={true} onTap={()=>onOpen(center.id)}/>
         </svg>
         {nodes.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.name} hat hier noch niemanden.</div>}
@@ -1176,7 +1198,10 @@ function StarGraph({people,groups,onBack,onOpen}){
     <div className="graph-view">
       <div className="navbar" style={{padding:"14px 16px"}}>
         <button className="back" onClick={onBack}>‹ Kartei</button>
-        {me && nav.mode!=="home" && <button className="nav-brand" onClick={()=>setNav({mode:"home"})}>zu mir</button>}
+        <div style={{display:"flex",gap:16,alignItems:"center"}}>
+          {me && stack.length>1 && <button className="nav-brand" onClick={up}>‹ zurück</button>}
+          {me && nav.mode!=="home" && <button className="nav-brand" onClick={goHome}>zu mir</button>}
+        </div>
       </div>
       {me && (
         <div className="graph-search-wrap">
@@ -1196,7 +1221,7 @@ function StarGraph({people,groups,onBack,onOpen}){
   );
 }
 
-function GroupEdit({group,people,onBack,onRename,onToggleMember,onDelete}){
+function GroupEdit({group,groups,people,onBack,onRename,onSetParent,onToggleMember,onDelete}){
   const [q,setQ]=useState("");
   if(!group) return (
     <div className="wrap"><div className="navbar"><button className="back" onClick={onBack}>‹ Einstellungen</button></div>
@@ -1206,6 +1231,8 @@ function GroupEdit({group,people,onBack,onRename,onToggleMember,onDelete}){
   const sorted=[...people].sort((a,b)=>a.name.localeCompare(b.name,"de"));
   const list=t?sorted.filter(p=>p.name.toLowerCase().includes(t)):sorted;
   const memberCount=people.filter(p=>(p.groups||[]).includes(group.id)).length;
+  const descIds=(()=>{ const acc=[]; const rec=(id)=>groups.filter(x=>x.parent===id).forEach(c=>{acc.push(c.id);rec(c.id);}); rec(group.id); return acc; })();
+  const parentOptions=groups.filter(x=>x.id!==group.id && !descIds.includes(x.id));
   return (
     <div className="wrap">
       <div className="navbar"><button className="back" onClick={onBack}>‹ Einstellungen</button></div>
@@ -1213,6 +1240,13 @@ function GroupEdit({group,people,onBack,onRename,onToggleMember,onDelete}){
       <div className="form-group">
         <label>Name</label>
         <input type="text" value={group.name} onChange={e=>onRename(group.id,e.target.value)}/>
+      </div>
+      <div className="form-group">
+        <label>Übergeordnete Gruppe</label>
+        <select value={group.parent||""} onChange={e=>onSetParent(group.id, e.target.value||null)}>
+          <option value="">— keine (oberste Ebene) —</option>
+          {parentOptions.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
       </div>
       <div className="sect-label" style={{marginTop:18}}>Mitglieder ({memberCount})</div>
       <input className="search" style={{marginTop:4}} value={q} onChange={e=>setQ(e.target.value)} placeholder="Person suchen…"/>
@@ -1270,10 +1304,12 @@ function App(){
   const removeIdea=(id)=>setIdeas(prev=>prev.filter(i=>i.id!==id));
   const toggleIdea=(id)=>setIdeas(prev=>prev.map(i=>i.id===id?{...i,done:!i.done}:i));
 
-  const createGroup=(name)=>{ const g={id:uid(),name:name.trim()}; setGroups(prev=>[...prev,g]); return g.id; };
+  const createGroup=(name)=>{ const g={id:uid(),name:name.trim(),parent:null}; setGroups(prev=>[...prev,g]); return g.id; };
   const renameGroup=(id,name)=>setGroups(prev=>prev.map(g=>g.id===id?{...g,name}:g));
-  const deleteGroup=(id)=>{ setGroups(prev=>prev.filter(g=>g.id!==id));
+  const deleteGroup=(id)=>{ setGroups(prev=>{ const g=prev.find(x=>x.id===id); const gp=g?g.parent||null:null;
+      return prev.filter(x=>x.id!==id).map(x=>x.parent===id?{...x,parent:gp}:x); });
     setPeople(prev=>prev.map(p=>({...p,groups:(p.groups||[]).filter(x=>x!==id)}))); };
+  const setGroupParent=(id,parentId)=>setGroups(prev=>prev.map(g=>g.id===id?{...g,parent:parentId||null}:g));
   const setMe=(id)=>setPeople(prev=>prev.map(p=>({...p,isMe:p.id===id})));
   const toggleGroupMember=(personId,groupId,on)=>setPeople(prev=>prev.map(p=> p.id!==personId?p:{...p,groups: on?Array.from(new Set([...(p.groups||[]),groupId])):(p.groups||[]).filter(x=>x!==groupId)}));
 
@@ -1372,7 +1408,7 @@ function App(){
   else if(view.name==="settings")
     body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onEditGroup={(id)=>setView({name:"groupEdit",id})} onSetMe={setMe} toast={toast}/>;
   else if(view.name==="groupEdit")
-    body=<GroupEdit group={groups.find(g=>g.id===view.id)} people={people} onBack={()=>setView({name:"settings"})} onRename={renameGroup} onToggleMember={toggleGroupMember} onDelete={(id)=>{ deleteGroup(id); setView({name:"settings"}); }}/>;
+    body=<GroupEdit group={groups.find(g=>g.id===view.id)} groups={groups} people={people} onBack={()=>setView({name:"settings"})} onRename={renameGroup} onSetParent={setGroupParent} onToggleMember={toggleGroupMember} onDelete={(id)=>{ deleteGroup(id); setView({name:"settings"}); }}/>;
 
   return <>
     {updateVer && (
