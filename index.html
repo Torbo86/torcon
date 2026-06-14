@@ -234,9 +234,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.23";
+const VERSION = "1.24";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.24", d:"Eigene und gruppierte angehängte Personen bleiben im Hauptkreis sichtbar (z.B. deine Tochter, die an dir hängt). Nur Randfiguren, die an andere gehängt und in keiner Gruppe sind, bleiben ausgeblendet."},
   {v:"1.23", d:"Die gehört-zu-Angabe hat jetzt ein Rollenfeld (z.B. Tochter, Sohn, Bekannter). Es wird im Profil und in der Angehängt-Liste statt des nackten bekannt-über angezeigt."},
   {v:"1.22", d:"Personen lassen sich als Kind markieren. Kinder bekommen im Netz und bei den Chips einen blauen Rand, Erwachsene einen neutralen, plus ein Kind-Label."},
   {v:"1.21", d:"Bugfix: eine einzelne Person oder Gruppe saß im Netz genau auf dem Mittelpunkt. Sie wird jetzt korrekt daneben platziert."},
@@ -1107,7 +1108,7 @@ function StarGraph({people,groups,onBack,onOpen}){
     inner=<div className="empty"><div className="e-title">Kein Mittelpunkt gesetzt</div>
       Wähle in den Einstellungen unter „Ich", wer du bist, dann erscheint hier dein Netz.</div>;
   } else if(nav.mode==="home"){
-    const topLevel=people.filter(p=>!p.via && p.id!==me.id);
+    const topLevel=people.filter(p=> p.id!==me.id && (!p.via || p.via===me.id || (p.groups||[]).length>0));
     const gb=groups.map((g,idx)=>({g,members:topLevel.filter(p=>(p.groups||[]).includes(g.id)),color:BUBBLE_COLORS[idx%BUBBLE_COLORS.length]})).filter(x=>x.members.length>0);
     const ungrouped=topLevel.filter(p=>!(p.groups||[]).length);
     const items=gb.map(x=>({type:"group",g:x.g,count:x.members.length,color:x.color}));
@@ -1129,7 +1130,7 @@ function StarGraph({people,groups,onBack,onOpen}){
   } else if(nav.mode==="group"){
     const isNone=nav.groupId==="__none";
     const g=isNone?null:groups.find(x=>x.id===nav.groupId);
-    const members=people.filter(p=>!p.via && p.id!==me.id && (isNone?!(p.groups||[]).length:(p.groups||[]).includes(nav.groupId)));
+    const members=people.filter(p=> p.id!==me.id && (!p.via || p.via===me.id || (p.groups||[]).length>0) && (isNone?!(p.groups||[]).length:(p.groups||[]).includes(nav.groupId)));
     const R=members.length?360:0;
     const P=ringPos(members.length,R);
     const fr=Math.max(48,Math.min(80, Math.round(1150/Math.max(7,members.length))));
