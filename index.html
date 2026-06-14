@@ -234,9 +234,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.26";
+const VERSION = "1.27";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.27", d:"Im Profil eines angehängten Kindes wird jetzt auch der zweite Elternteil (Partner des Elternteils) angezeigt, nicht nur der, an dem es hängt."},
   {v:"1.26", d:"Der Geräte-Zurück-Knopf schließt die App nicht mehr sofort, sondern geht eine Ebene hoch (im Netz, von Detail oder Einstellungen zur Liste). Erst auf der Startliste schließt ein zweites Zurück die App."},
   {v:"1.25", d:"Gruppen lassen sich anderen Gruppen unterordnen (Kreise in Kreisen). Die Startebene zeigt nur die obersten Kreise, das Öffnen zeigt Unterkreise plus direkte Leute. Neuer Zurück-Knopf im Netz geht eine Ebene hoch, zu mir springt ganz nach oben."},
   {v:"1.24", d:"Eigene und gruppierte angehängte Personen bleiben im Hauptkreis sichtbar (z.B. deine Tochter, die an dir hängt). Nur Randfiguren, die an andere gehängt und in keiner Gruppe sind, bleiben ausgeblendet."},
@@ -572,6 +573,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
   const pb=parseBday(person.birthday); const nb=nextBirthday(pb,today); const age=currentAge(pb,today);
   const byId = id => people.find(p=>p.id===id);
   const viaPerson = person.via ? byId(person.via) : null;
+  const viaPartner = viaPerson && viaPerson.partner ? byId(viaPerson.partner) : null;
   const partnerPerson = person.partner ? byId(person.partner) : null;
   const attached = people.filter(p=>p.via===person.id || (person.partner && p.via===person.partner));
   const fields=[
@@ -641,6 +643,11 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
               <button className="chip" onClick={()=>onOpen(viaPerson.id)}>
                 <AvaSm person={viaPerson}/><span>{viaPerson.name}</span>
               </button>
+              {viaPartner && (
+                <button className="chip" onClick={()=>onOpen(viaPartner.id)}>
+                  <AvaSm person={viaPartner}/><span>{viaPartner.name}</span>
+                </button>
+              )}
             </div>
           </div>
         )}
