@@ -234,9 +234,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.25";
+const VERSION = "1.26";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.26", d:"Der Geräte-Zurück-Knopf schließt die App nicht mehr sofort, sondern geht eine Ebene hoch (im Netz, von Detail oder Einstellungen zur Liste). Erst auf der Startliste schließt ein zweites Zurück die App."},
   {v:"1.25", d:"Gruppen lassen sich anderen Gruppen unterordnen (Kreise in Kreisen). Die Startebene zeigt nur die obersten Kreise, das Öffnen zeigt Unterkreise plus direkte Leute. Neuer Zurück-Knopf im Netz geht eine Ebene hoch, zu mir springt ganz nach oben."},
   {v:"1.24", d:"Eigene und gruppierte angehängte Personen bleiben im Hauptkreis sichtbar (z.B. deine Tochter, die an dir hängt). Nur Randfiguren, die an andere gehängt und in keiner Gruppe sind, bleiben ausgeblendet."},
   {v:"1.23", d:"Die gehört-zu-Angabe hat jetzt ein Rollenfeld (z.B. Tochter, Sohn, Bekannter). Es wird im Profil und in der Angehängt-Liste statt des nackten bekannt-über angezeigt."},
@@ -1072,7 +1073,7 @@ function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,on
 const REL_COLOR={Familie:"#3f6b5a",Freund:"#9e3b3b",Partner:"#8a5a7a",Kollege:"#4a6280",Sonstige:"#7a756d"};
 const BUBBLE_COLORS=["#3f6b5a","#9e3b3b","#8a5a7a","#4a6280","#a9762f","#5a7d6b","#7a5a9e","#7a756d"];
 const CHILD_RING="#3f86b8", ADULT_RING="#7a756d";
-function StarGraph({people,groups,onBack,onOpen}){
+function StarGraph({people,groups,onBack,onOpen,backHandle}){
   const me=people.find(p=>p.isMe);
   const byId=id=>people.find(p=>p.id===id);
   const [stack,setStack]=useState([{mode:"home"}]);
@@ -1080,6 +1081,7 @@ function StarGraph({people,groups,onBack,onOpen}){
   const push=(n)=>setStack(s=>[...s,n]);
   const up=()=>setStack(s=>s.length>1?s.slice(0,-1):s);
   const goHome=()=>setStack([{mode:"home"}]);
+  useEffect(()=>{ if(backHandle) backHandle.current={canBack:stack.length>1, back:()=>setStack(s=>s.length>1?s.slice(0,-1):s)}; },[stack,backHandle]);
   const [q,setQ]=useState("");
   const VB=1000, cx=500, cy=500;
   const ringPos=(n,R)=>Array.from({length:n}).map((_,i)=>{ const a=(-90+(n===1?0:i*360/n))*Math.PI/180; return {x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
@@ -1276,6 +1278,8 @@ function App(){
   const [groupFilter,setGroupFilter]=useState(null);
   const [toastMsg,setToastMsg]=useState(null);
   const [updateVer,setUpdateVer]=useState(null);
+  const viewRef=useRef(view); useEffect(()=>{viewRef.current=view;},[view]);
+  const graphBackRef=useRef({canBack:false});
   const today=useMemo(()=>new Date(),[]);
   useEffect(()=>{ saveStore(people, ideas, groups); },[people, ideas, groups]);
   const toast=(m)=>{ setToastMsg(m); setTimeout(()=>setToastMsg(null),1900); };
@@ -1298,6 +1302,28 @@ function App(){
     const onVis=()=>{ if(document.visibilityState==="visible") check(); };
     document.addEventListener("visibilitychange",onVis);
     return ()=>{ stopped=true; document.removeEventListener("visibilitychange",onVis); };
+  },[]);
+
+  useEffect(()=>{
+    const doBack=()=>{
+      const v=viewRef.current;
+      if(v.name==="graph"){ const gb=graphBackRef.current; if(gb && gb.canBack){ gb.back(); return true; } setView({name:"list"}); return true; }
+      if(v.name==="detail"){ setView({name:"list"}); return true; }
+      if(v.name==="edit"){ setView(v.id?{name:"detail",id:v.id}:{name:"list"}); return true; }
+      if(v.name==="settings"){ setView({name:"list"}); return true; }
+      if(v.name==="groupEdit"){ setView({name:"settings"}); return true; }
+      return false;
+    };
+    let exitArmed=false, exitTimer=null;
+    history.pushState({torcon:1},"");
+    const onPop=()=>{
+      const handled=doBack();
+      if(handled){ exitArmed=false; history.pushState({torcon:1},""); }
+      else if(exitArmed){ history.back(); }
+      else { exitArmed=true; toast("Nochmal zurück, um zu schließen"); history.pushState({torcon:1},""); clearTimeout(exitTimer); exitTimer=setTimeout(()=>{exitArmed=false;},2200); }
+    };
+    window.addEventListener("popstate",onPop);
+    return ()=>{ window.removeEventListener("popstate",onPop); clearTimeout(exitTimer); };
   },[]);
 
   const addIdea=(text)=>setIdeas(prev=>[{id:uid(),text,done:false,created:Date.now()},...prev]);
@@ -1404,7 +1430,7 @@ function App(){
       onCreateGroup={createGroup}
       onSave={savePerson}/>;
   else if(view.name==="graph")
-    body=<StarGraph people={people} groups={groups} onBack={()=>setView({name:"list"})} onOpen={id=>setView({name:"detail",id})}/>;
+    body=<StarGraph people={people} groups={groups} backHandle={graphBackRef} onBack={()=>setView({name:"list"})} onOpen={id=>setView({name:"detail",id})}/>;
   else if(view.name==="settings")
     body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onEditGroup={(id)=>setView({name:"groupEdit",id})} onSetMe={setMe} toast={toast}/>;
   else if(view.name==="groupEdit")
