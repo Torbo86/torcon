@@ -191,6 +191,14 @@
   .graph-title{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;
     font-family:var(--serif);font-size:17px;color:var(--ink);padding:4px 16px 0}
   .graph-hint{font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:400}
+  .graph-search-wrap{position:relative;padding:0 16px 2px;max-width:640px;margin:0 auto;width:100%}
+  .graph-search{margin-top:0}
+  .graph-results{position:absolute;left:16px;right:16px;top:calc(100% - 2px);background:var(--surface);
+    border:1px solid var(--line);border-radius:11px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:5;
+    max-height:300px;overflow-y:auto}
+  .graph-result{display:block;width:100%;text-align:left;background:none;border:none;padding:11px 13px;
+    border-top:1px solid var(--line-soft);cursor:pointer;font-size:15px;color:var(--ink);font-family:var(--sans)}
+  .graph-result:first-child{border-top:none}
   .toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);background:var(--ink);
     color:#fff;padding:11px 18px;border-radius:11px;font-size:14px;z-index:60;
     box-shadow:0 6px 20px rgba(0,0,0,.22);max-width:90%}
@@ -203,9 +211,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.14";
+const VERSION = "1.15";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.15", d:"Netz bleibt übersichtlich: oben stehen nur deine Gruppen als Bubbles plus eine Sammelblase für Gruppenlose. Gruppe antippen zeigt ihre Leute. Neue Suche im Netz springt direkt zu einer Person."},
   {v:"1.14", d:"Gruppen sind die Hauptstruktur, das Netz zeigt alle deine Leute um dich. Neue Angabe bekannt über für Randfiguren wie Bekannte oder deren Kinder, die an einer Person hängen. Manuelle Verbindungen entfallen aus dem Ablauf."},
   {v:"1.13", d:"Verbindung hinzufügen als kompakte Namensliste, Suche auch nach Gruppe. Gruppenmitglieder erscheinen im Netz. Gruppenfilter bricht um statt seitwärts zu scrollen."},
   {v:"1.12", d:"Netz erkunden: ein Gesicht antippen macht es zum Mittelpunkt, die Mitte antippen öffnet das Profil. „Zu mir“ springt zurück."},
@@ -958,11 +967,15 @@ function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,on
 /* ---------- app ---------- */
 /* ---------- netz / star graph ---------- */
 const REL_COLOR={Familie:"#3f6b5a",Freund:"#9e3b3b",Partner:"#8a5a7a",Kollege:"#4a6280",Sonstige:"#7a756d"};
-function StarGraph({people,onBack,onOpen}){
+const BUBBLE_COLORS=["#3f6b5a","#9e3b3b","#8a5a7a","#4a6280","#a9762f","#5a7d6b","#7a5a9e","#7a756d"];
+function StarGraph({people,groups,onBack,onOpen}){
   const me=people.find(p=>p.isMe);
-  const [centerId,setCenterId]=useState(me?me.id:null);
   const byId=id=>people.find(p=>p.id===id);
-  const center=byId(centerId)||me||null;
+  const [nav,setNav]=useState({mode:"home"});
+  const [q,setQ]=useState("");
+  const VB=1000, cx=500, cy=500;
+  const ringPos=(n,R)=>Array.from({length:n}).map((_,i)=>{ const a=(-90+(n===1?0:i*360/n))*Math.PI/180; return {x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
+  const goPerson=(id)=>{ setQ(""); if(id===(me&&me.id)) setNav({mode:"home"}); else setNav({mode:"person",personId:id}); };
 
   const Face=({p,x,y,r,ring,bold,onTap})=>{
     const cid="cl_"+p.id;
@@ -978,46 +991,102 @@ function StarGraph({people,onBack,onOpen}){
       </g>
     );
   };
+  const Bubble=({label,count,x,y,r,color,onTap})=>(
+    <g onClick={onTap} style={{cursor:"pointer"}}>
+      <circle cx={x} cy={y} r={r} fill={color} opacity="0.16"/>
+      <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth="6"/>
+      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontFamily="sans-serif" fontWeight="700" fontSize={r*0.72} fill={color}>{count}</text>
+      <text x={x} y={y+r+32} textAnchor="middle" fontSize="29" fontFamily="sans-serif" fill="#23201d">{label.length>16?label.slice(0,15)+"…":label}</text>
+    </g>
+  );
 
-  let inner=null;
+  let inner=null, title=null;
   if(!me){
     inner=<div className="empty"><div className="e-title">Kein Mittelpunkt gesetzt</div>
       Wähle in den Einstellungen unter „Ich", wer du bist, dann erscheint hier dein Netz.</div>;
-  } else if(center){
-    let nodes=[];
-    const addNode=(p,kind)=>{ if(p && p.id!==center.id && !nodes.some(n=>n.person.id===p.id)) nodes.push({person:p,kind}); };
-    if(center.id===me.id){
-      people.filter(p=>!p.via && p.id!==me.id).forEach(p=>addNode(p,"mine"));
-    } else {
-      if(center.via) addNode(byId(center.via),"host");
-      people.filter(p=>p.via===center.id).forEach(p=>addNode(p,"attached"));
-      people.filter(p=>(p.groups||[]).some(g=>(center.groups||[]).includes(g))).forEach(p=>addNode(p,"group"));
-      if(!center.via) addNode(me,"me");
-    }
-    const LINE={mine:"#c9c2b8",me:"#9e3b3b",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
-    const VB=1000, cx=500, cy=500, R=360;
-    const nodeR=Math.max(46,Math.min(78, Math.round(1150/Math.max(7,nodes.length))));
-    const pos=nodes.map((d,i)=>{ const a=(-90+i*360/nodes.length)*Math.PI/180;
-      return {person:d.person,kind:d.kind,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
-    const centerRing = center.id===me.id ? "#9e3b3b" : "#23201d";
+  } else if(nav.mode==="home"){
+    const topLevel=people.filter(p=>!p.via && p.id!==me.id);
+    const gb=groups.map((g,idx)=>({g,members:topLevel.filter(p=>(p.groups||[]).includes(g.id)),color:BUBBLE_COLORS[idx%BUBBLE_COLORS.length]})).filter(x=>x.members.length>0);
+    const ungrouped=topLevel.filter(p=>!(p.groups||[]).length);
+    const items=gb.map(x=>({type:"group",g:x.g,count:x.members.length,color:x.color}));
+    if(ungrouped.length) items.push({type:"none",count:ungrouped.length,color:"#9a948b"});
+    const R=items.length<=1?0:360;
+    const P=ringPos(items.length,R);
+    const br=Math.max(58,Math.min(108, Math.round(1300/Math.max(6,items.length))));
+    title=<div className="graph-title">Dein Netz<span className="graph-hint">Tippe eine Gruppe an, um ihre Leute zu sehen</span></div>;
     inner=(
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
-          {pos.map((p,i)=><line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={LINE[p.kind]||"#c9c2b8"} strokeWidth={p.kind==="group"?3:4} opacity={p.kind==="mine"?0.4:0.6} strokeDasharray={p.kind==="group"?"3 8":"0"}/>)}
-          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={nodeR} ring={LINE[p.kind]} onTap={()=>setCenterId(p.person.id)}/>)}
-          <Face p={center} x={cx} y={cy} r={96} ring={centerRing} bold={true} onTap={()=>onOpen(center.id)}/>
+          {items.map((it,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={it.color} strokeWidth="4" opacity="0.4"/>)}
+          {items.map((it,i)=><Bubble key={i} label={it.type==="none"?"Ohne Gruppe":it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} onTap={()=>setNav({mode:"group",groupId:it.type==="none"?"__none":it.g.id,color:it.color})}/>)}
+          <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={()=>onOpen(me.id)}/>
         </svg>
-        {pos.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.id===me.id?"Du hast noch keine Leute angelegt.":center.name+" hat hier noch niemanden."}</div>}
+        {items.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Noch keine Gruppen mit Leuten. Ordne Personen beim Bearbeiten Gruppen zu.</div>}
+      </div>
+    );
+  } else if(nav.mode==="group"){
+    const isNone=nav.groupId==="__none";
+    const g=isNone?null:groups.find(x=>x.id===nav.groupId);
+    const members=people.filter(p=>!p.via && p.id!==me.id && (isNone?!(p.groups||[]).length:(p.groups||[]).includes(nav.groupId)));
+    const R=members.length<=1?0:360;
+    const P=ringPos(members.length,R);
+    const fr=Math.max(48,Math.min(80, Math.round(1150/Math.max(7,members.length))));
+    title=<div className="graph-title">{isNone?"Ohne Gruppe":(g?g.name:"Gruppe")}<span className="graph-hint">Tippe eine Person an, um weiterzugehen</span></div>;
+    inner=(
+      <div className="graph-stage">
+        <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
+          {members.map((m,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={nav.color||"#c9c2b8"} strokeWidth="4" opacity="0.5"/>)}
+          {members.map((m,i)=><Face key={m.id} p={m} x={P[i].x} y={P[i].y} r={fr} ring={nav.color||"#7a756d"} onTap={()=>goPerson(m.id)}/>)}
+          <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={()=>setNav({mode:"home"})}/>
+        </svg>
+        {members.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Niemand in dieser Gruppe.</div>}
+      </div>
+    );
+  } else {
+    const center=byId(nav.personId)||me;
+    let nodes=[];
+    const addNode=(p,kind)=>{ if(p && p.id!==center.id && !nodes.some(n=>n.person.id===p.id)) nodes.push({person:p,kind}); };
+    if(center.via) addNode(byId(center.via),"host");
+    people.filter(p=>p.via===center.id).forEach(p=>addNode(p,"attached"));
+    people.filter(p=>!p.via && (p.groups||[]).some(g=>(center.groups||[]).includes(g))).forEach(p=>addNode(p,"group"));
+    if(!center.via) addNode(me,"me");
+    const LINE={me:"#9e3b3b",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
+    const R=nodes.length<=1?0:360;
+    const P=ringPos(nodes.length,R);
+    const fr=Math.max(48,Math.min(78, Math.round(1150/Math.max(7,nodes.length))));
+    title=<div className="graph-title">Netz um {center.name}<span className="graph-hint">Mitte antippen öffnet das Profil</span></div>;
+    inner=(
+      <div className="graph-stage">
+        <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
+          {nodes.map((nd,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={LINE[nd.kind]||"#c9c2b8"} strokeWidth={nd.kind==="group"?3:4} opacity="0.55" strokeDasharray={nd.kind==="group"?"3 8":"0"}/>)}
+          {nodes.map((nd,i)=><Face key={nd.person.id} p={nd.person} x={P[i].x} y={P[i].y} r={fr} ring={LINE[nd.kind]} onTap={()=> nd.kind==="me"? setNav({mode:"home"}) : goPerson(nd.person.id)}/>)}
+          <Face p={center} x={cx} y={cy} r={96} ring="#23201d" bold={true} onTap={()=>onOpen(center.id)}/>
+        </svg>
+        {nodes.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.name} hat hier noch niemanden.</div>}
       </div>
     );
   }
+
+  const matches=q.trim()?people.filter(p=>p.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0,8):[];
   return (
     <div className="graph-view">
       <div className="navbar" style={{padding:"14px 16px"}}>
         <button className="back" onClick={onBack}>‹ Kartei</button>
-        {me && center && center.id!==me.id && <button className="nav-brand" onClick={()=>setCenterId(me.id)}>zu mir</button>}
+        {me && nav.mode!=="home" && <button className="nav-brand" onClick={()=>setNav({mode:"home"})}>zu mir</button>}
       </div>
-      {me && center && <div className="graph-title">Netz um {center.name}<span className="graph-hint">Gesicht antippen springt dorthin, Mitte öffnet das Profil</span></div>}
+      {me && (
+        <div className="graph-search-wrap">
+          <input className="search graph-search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Person im Netz suchen…"/>
+          {matches.length>0 && (
+            <div className="graph-results">
+              {matches.map(p=>(
+                <button className="graph-result" key={p.id} onClick={()=>goPerson(p.id)}>{p.name}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {title}
       {inner}
     </div>
   );
@@ -1146,7 +1215,7 @@ function App(){
       onCreateGroup={createGroup}
       onSave={savePerson}/>;
   else if(view.name==="graph")
-    body=<StarGraph people={people} onBack={()=>setView({name:"list"})} onOpen={id=>setView({name:"detail",id})}/>;
+    body=<StarGraph people={people} groups={groups} onBack={()=>setView({name:"list"})} onOpen={id=>setView({name:"detail",id})}/>;
   else if(view.name==="settings")
     body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onRenameGroup={renameGroup} onDeleteGroup={deleteGroup} onSetMe={setMe} toast={toast}/>;
 
