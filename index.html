@@ -171,6 +171,9 @@
   .crop-controls input[type=range]{width:100%}
   .crop-hint{text-align:center;font-size:12.5px;color:#bdb6ad;margin-top:8px}
   .crop-bar{display:flex;gap:10px;padding:14px 18px calc(18px + env(safe-area-inset-bottom))}
+  .via-current{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
+    border-radius:11px;padding:11px 13px}
+  .via-nm{flex:1;font-size:15px}
   .me-toggle{display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 13px;
     background:#f0ece5;border:1px solid var(--line);border-radius:11px;font-size:14.5px;font-weight:500;cursor:pointer}
   .me-toggle input{width:auto}
@@ -200,9 +203,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.13";
+const VERSION = "1.14";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.14", d:"Gruppen sind die Hauptstruktur, das Netz zeigt alle deine Leute um dich. Neue Angabe bekannt über für Randfiguren wie Bekannte oder deren Kinder, die an einer Person hängen. Manuelle Verbindungen entfallen aus dem Ablauf."},
   {v:"1.13", d:"Verbindung hinzufügen als kompakte Namensliste, Suche auch nach Gruppe. Gruppenmitglieder erscheinen im Netz. Gruppenfilter bricht um statt seitwärts zu scrollen."},
   {v:"1.12", d:"Netz erkunden: ein Gesicht antippen macht es zum Mittelpunkt, die Mitte antippen öffnet das Profil. „Zu mir“ springt zurück."},
   {v:"1.11", d:"Verbindung hinzufügen mit Suchfeld statt langer Liste: Typ wählen, Person suchen, antippen."},
@@ -342,7 +346,7 @@ function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onS
     const metaParts=[];
     if(p.job&&p.job.trim()) metaParts.push(p.job);
     if(pb) metaParts.push(fmtBday(pb)+(age!=null?` · ${age}`:""));
-    if((p.connections||[]).length) metaParts.push(`${p.connections.length} Verb.`);
+    if(p.via){ const v=people.find(x=>x.id===p.via); if(v) metaParts.push("über "+v.name.split(" ")[0]); }
     return (
       <div className="card" key={(extraKey||"")+p.id} onClick={()=>onOpen(p.id)}>
         <Avatar person={p}/>
@@ -505,13 +509,15 @@ function ImageCropper({src,onCancel,onDone}){
   );
 }
 
-function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onDelete,today}){
+function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAttached,onDelete,today}){
   const [reveal,setReveal]=useState(false);
   const lp=useLongPress(()=>setReveal(r=>!r));
   useEffect(()=>{ setReveal(false); },[person&&person.id]);
   if(!person) return null;
   const pb=parseBday(person.birthday); const nb=nextBirthday(pb,today); const age=currentAge(pb,today);
   const byId = id => people.find(p=>p.id===id);
+  const viaPerson = person.via ? byId(person.via) : null;
+  const attached = people.filter(p=>p.via===person.id);
   const fields=[
     {lab:"Geburtstag", val: pb ? (fmtBday(pb)
         + (age!=null?` (wird ${nb.turning}, ${nb.days===0?"heute!":daysLabel(nb.days)})`
@@ -572,21 +578,13 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onDelete,
           <div className="hint" style={{margin:"10px 2px"}}>Keine geheimen Felder. Beim Bearbeiten per langem Druck aufs Foto anlegen.</div>
         )}
 
-        {(person.connections||[]).length>0 && (
+        {viaPerson && (
           <div className="field">
-            <div className="lab">Verbindungen</div>
+            <div className="lab">Bekannt über</div>
             <div className="chips">
-              {person.connections.map((c,i)=>{
-                const other=byId(c.personId);
-                if(!other) return null;
-                return (
-                  <div className="chip" key={i} onClick={()=>onOpen(other.id)}>
-                    <AvaSm person={other}/>
-                    <span>{other.name}</span>
-                    <span className={"reltag t-"+c.type}>{c.type}</span>
-                  </div>
-                );
-              })}
+              <button className="chip" onClick={()=>onOpen(viaPerson.id)}>
+                <AvaSm person={viaPerson}/><span>{viaPerson.name}</span>
+              </button>
             </div>
           </div>
         )}
@@ -601,8 +599,22 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onDelete,
           </div>
         )}
 
-        {fields.length===0 && !(person.connections||[]).length && !(person.custom||[]).some(c=>c.label&&c.value) && !(person.groups||[]).length && (
-          <div className="empty" style={{padding:"30px 10px"}}>Noch keine Infos hinterlegt. Tippe auf Bearbeiten.</div>
+        {attached.length>0 && (
+          <div className="field">
+            <div className="lab">Angehängt (z.B. Kinder, Bekannte)</div>
+            <div className="chips">
+              {attached.map(a=>(
+                <button className="chip" key={a.id} onClick={()=>onOpen(a.id)}>
+                  <AvaSm person={a}/><span>{a.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <button className="btn btn-ghost sm btn-block" style={{marginTop:12}} onClick={()=>onAddAttached(person.id)}>+ Person anhängen, die zu {person.name.split(" ")[0]} gehört</button>
+
+        {fields.length===0 && !person.via && !(person.custom||[]).some(c=>c.label&&c.value) && !(person.groups||[]).length && (
+          <div className="empty" style={{padding:"24px 10px 6px"}}>Noch keine Infos hinterlegt. Tippe auf Bearbeiten.</div>
         )}
 
         <div className="divider"></div>
@@ -616,7 +628,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onDelete,
 }
 
 /* ---------- edit form ---------- */
-function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
+function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSave,today}){
   const isNew = !person;
   const [name,setName]=useState(person?.name||"");
   const [job,setJob]=useState(person?.job||"");
@@ -629,7 +641,6 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
   const [gifts,setGifts]=useState(person?.gifts||"");
   const [notes,setNotes]=useState(person?.notes||"");
   const [custom,setCustom]=useState(person?.custom?JSON.parse(JSON.stringify(person.custom)):[]);
-  const [conns,setConns]=useState(person?.connections?JSON.parse(JSON.stringify(person.connections)):[]);
   const [secret,setSecret]=useState(person?.secret?JSON.parse(JSON.stringify(person.secret)):[]);
   const [showSecret,setShowSecret]=useState(false);
   const [cropSrc,setCropSrc]=useState(null);
@@ -642,14 +653,12 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
   const onFile=(e)=>{ const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>setCropSrc(ev.target.result); r.readAsDataURL(f); } e.target.value=""; };
 
   const others = people.filter(p=>!person || p.id!==person.id)
-    .filter(p=>!conns.some(c=>c.personId===p.id))
     .sort((a,b)=>a.name.localeCompare(b.name,"de"));
-  const [connQuery,setConnQuery]=useState("");
-  const [addType,setAddType]=useState("Freund");
-  const addConnNow=(pid)=>{ setConns([...conns,{personId:pid,type:addType}]); setConnQuery(""); };
+  const [via,setVia]=useState(person?.via||initialVia||null);
+  const [viaQuery,setViaQuery]=useState("");
   const groupNameById=(id)=>(groups.find(g=>g.id===id)||{}).name||"";
-  const otherMatches=others.filter(p=>{
-    const t=connQuery.trim().toLowerCase(); if(!t) return true;
+  const viaMatches=others.filter(p=>{
+    const t=viaQuery.trim().toLowerCase(); if(!t) return true;
     const g=(p.groups||[]).map(groupNameById).join(" ");
     return (p.name+" "+g).toLowerCase().includes(t);
   });
@@ -670,7 +679,7 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, secret:cleanSecret, connections:conns, groups:pGroups, isMe:person?.isMe||false,
+      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, isMe:person?.isMe||false,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -779,44 +788,30 @@ function EditPerson({person,people,groups,onCancel,onCreateGroup,onSave,today}){
       )}
 
       <div className="form-group">
-        <label>Verbindungen</label>
-        {conns.map((c,i)=>{
-          const o=byId(c.personId);
-          return (
-            <div className="custom-row" key={i} style={{alignItems:"center"}}>
-              <div style={{flex:"1 1 auto",display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-                <AvaSm person={o}/>
-                <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o?o.name:"(gelöscht)"}</span>
-              </div>
-              <select style={{flex:"0 0 130px"}} value={c.type} onChange={e=>{const n=[...conns];n[i]={...n[i],type:e.target.value};setConns(n);}}>
-                {REL_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-              </select>
-              <button type="button" className="btn btn-soft sm" onClick={()=>setConns(conns.filter((_,j)=>j!==i))}>✕</button>
-            </div>
-          );
-        })}
-        {others.length>0 ? (
+        <label>Bekannt über / gehört zu</label>
+        {via ? (
+          <div className="via-current">
+            <span className="via-nm">{(byId(via)||{}).name||"(gelöscht)"}</span>
+            <button type="button" className="inline-rm" onClick={()=>setVia(null)}>entfernen</button>
+          </div>
+        ) : others.length>0 ? (
           <div className="conn-add">
-            <div className="seg">
-              {REL_TYPES.map(t=>(
-                <button type="button" key={t} className={(addType===t?"on t-"+t:"")} onClick={()=>setAddType(t)}>{t}</button>
-              ))}
-            </div>
-            <input className="conn-search" type="text" value={connQuery} placeholder="Name oder Gruppe…"
-              onChange={e=>setConnQuery(e.target.value)}/>
+            <input className="conn-search" type="text" value={viaQuery} placeholder="Name oder Gruppe…"
+              onChange={e=>setViaQuery(e.target.value)}/>
             <div className="conn-list">
-              {otherMatches.map(p=>(
-                <button type="button" className="conn-row" key={p.id} onClick={()=>addConnNow(p.id)}>
+              {viaMatches.map(p=>(
+                <button type="button" className="conn-row" key={p.id} onClick={()=>{ setVia(p.id); setViaQuery(""); }}>
                   <span className="conn-nm">{p.name}</span>
-                  <span className="conn-plus">+ {addType}</span>
+                  <span className="conn-plus">wählen</span>
                 </button>
               ))}
-              {otherMatches.length===0 && <div className="hint" style={{padding:"8px 4px"}}>Keine passende Person.</div>}
+              {viaMatches.length===0 && <div className="hint" style={{padding:"8px 4px"}}>Keine passende Person.</div>}
             </div>
           </div>
         ) : (
-          <div className="hint">{people.length<=1?"Lege weitere Personen an, um sie zu verbinden.":"Alle anderen sind bereits verbunden."}</div>
+          <div className="hint">Lege erst weitere Personen an.</div>
         )}
+        <div className="hint">Optional. Für Randfiguren wie Bekannte von Freunden oder deren Kinder. Sie erscheinen dann bei dieser Person, nicht in deinem Hauptkreis.</div>
       </div>
 
       <div className="form-group">
@@ -989,29 +984,30 @@ function StarGraph({people,onBack,onOpen}){
     inner=<div className="empty"><div className="e-title">Kein Mittelpunkt gesetzt</div>
       Wähle in den Einstellungen unter „Ich", wer du bist, dann erscheint hier dein Netz.</div>;
   } else if(center){
-    const directConns=(center.connections||[]).map(c=>({person:byId(c.personId),type:c.type,group:false})).filter(x=>x.person);
-    const directIds=new Set(directConns.map(d=>d.person.id));
-    const coGroup=people.filter(p=>p.id!==center.id && !directIds.has(p.id) && (p.groups||[]).some(g=>(center.groups||[]).includes(g))).map(p=>({person:p,type:null,group:true}));
-    const all=[...directConns,...coGroup];
+    let nodes=[];
+    const addNode=(p,kind)=>{ if(p && p.id!==center.id && !nodes.some(n=>n.person.id===p.id)) nodes.push({person:p,kind}); };
+    if(center.id===me.id){
+      people.filter(p=>!p.via && p.id!==me.id).forEach(p=>addNode(p,"mine"));
+    } else {
+      if(center.via) addNode(byId(center.via),"host");
+      people.filter(p=>p.via===center.id).forEach(p=>addNode(p,"attached"));
+      people.filter(p=>(p.groups||[]).some(g=>(center.groups||[]).includes(g))).forEach(p=>addNode(p,"group"));
+      if(!center.via) addNode(me,"me");
+    }
+    const LINE={mine:"#c9c2b8",me:"#9e3b3b",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
     const VB=1000, cx=500, cy=500, R=360;
-    const pos=all.map((d,i)=>{ const a=(-90+i*360/all.length)*Math.PI/180;
-      return {person:d.person,type:d.type,group:d.group,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
-    const posById={}; pos.forEach(p=>posById[p.person.id]=p);
-    const links=[];
-    pos.forEach(p=>{ (p.person.connections||[]).forEach(c=>{ const q=posById[c.personId];
-      if(q && c.personId>p.person.id) links.push({a:p,b:q}); }); });
+    const nodeR=Math.max(46,Math.min(78, Math.round(1150/Math.max(7,nodes.length))));
+    const pos=nodes.map((d,i)=>{ const a=(-90+i*360/nodes.length)*Math.PI/180;
+      return {person:d.person,kind:d.kind,x:cx+R*Math.cos(a),y:cy+R*Math.sin(a)}; });
     const centerRing = center.id===me.id ? "#9e3b3b" : "#23201d";
     inner=(
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
-          {pos.map((p,i)=> p.group
-            ? <line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#b0a99e" strokeWidth="3" strokeDasharray="3 8" opacity="0.7"/>
-            : <line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={REL_COLOR[p.type]||"#c9c2b8"} strokeWidth="4" opacity="0.55"/>)}
-          {links.map((l,i)=><line key={"l"+i} x1={l.a.x} y1={l.a.y} x2={l.b.x} y2={l.b.y} stroke="#d3ccc1" strokeWidth="3" strokeDasharray="2 6"/>)}
-          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={78} ring={p.group?"#b0a99e":REL_COLOR[p.type]} onTap={()=>setCenterId(p.person.id)}/>)}
+          {pos.map((p,i)=><line key={"c"+i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke={LINE[p.kind]||"#c9c2b8"} strokeWidth={p.kind==="group"?3:4} opacity={p.kind==="mine"?0.4:0.6} strokeDasharray={p.kind==="group"?"3 8":"0"}/>)}
+          {pos.map(p=><Face key={p.person.id} p={p.person} x={p.x} y={p.y} r={nodeR} ring={LINE[p.kind]} onTap={()=>setCenterId(p.person.id)}/>)}
           <Face p={center} x={cx} y={cy} r={96} ring={centerRing} bold={true} onTap={()=>onOpen(center.id)}/>
         </svg>
-        {all.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.name} hat noch keine Verbindungen oder Gruppen.</div>}
+        {pos.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.id===me.id?"Du hast noch keine Leute angelegt.":center.name+" hat hier noch niemanden."}</div>}
       </div>
     );
   }
@@ -1141,9 +1137,11 @@ function App(){
       onEdit={()=>setView({name:"edit",id:view.id})}
       onOpen={id=>setView({name:"detail",id})}
       onOpenGroup={(gid)=>{ setGroupFilter(gid); setView({name:"list"}); }}
+      onAddAttached={(pid)=>setView({name:"edit",id:null,via:pid})}
       onDelete={deletePerson}/>;
   else if(view.name==="edit")
     body=<EditPerson person={view.id?byId(view.id):null} people={people} groups={groups} today={today}
+      initialVia={view.via||null}
       onCancel={()=>setView(view.id?{name:"detail",id:view.id}:{name:"list"})}
       onCreateGroup={createGroup}
       onSave={savePerson}/>;
