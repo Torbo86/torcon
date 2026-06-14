@@ -191,7 +191,14 @@
   .me-toggle input{width:auto}
   .me-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
     color:#fff;background:var(--accent);border-radius:999px;padding:2px 8px;margin-left:9px;vertical-align:2px}
-  .gfilter{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 12px}
+  .gfilter-wrap{padding:2px 0 10px}
+  .gfilter-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;
+    background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:9px 13px;
+    font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;font-family:var(--sans)}
+  .gfilter-toggle .chev{color:var(--muted);font-size:13px}
+  .gft-right{display:flex;align-items:center;gap:12px}
+  .gft-clear{color:var(--accent);font-weight:700;font-size:17px;line-height:1;padding:0 2px}
+  .gfilter{display:flex;flex-wrap:wrap;gap:8px;padding:10px 0 4px}
   .gchip{flex:0 0 auto;background:var(--surface);border:1px solid var(--line);border-radius:999px;
     padding:7px 14px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
   .gchip.on{background:var(--ink);color:#fff;border-color:transparent}
@@ -223,9 +230,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.16";
+const VERSION = "1.17";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.17", d:"Gruppen-Filter unter der Suche ist jetzt eingeklappt und öffnet sich nur bei Bedarf. Aktiver Filter wird im Schalter angezeigt und lässt sich dort direkt löschen."},
   {v:"1.16", d:"Gruppen bearbeiten: in den Einstellungen eine Gruppe antippen, dort umbenennen, Mitglieder per Tippen an- und abhaken und die Gruppe löschen."},
   {v:"1.15", d:"Netz bleibt übersichtlich: oben stehen nur deine Gruppen als Bubbles plus eine Sammelblase für Gruppenlose. Gruppe antippen zeigt ihre Leute. Neue Suche im Netz springt direkt zu einer Person."},
   {v:"1.14", d:"Gruppen sind die Hauptstruktur, das Netz zeigt alle deine Leute um dich. Neue Angabe bekannt über für Randfiguren wie Bekannte oder deren Kinder, die an einer Person hängen. Manuelle Verbindungen entfallen aus dem Ablauf."},
@@ -339,6 +347,7 @@ function AvaSm({person}){
 /* ---------- list / Kartei ---------- */
 function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onSettings,onGraph}){
   const [q,setQ]=useState("");
+  const [showGroups,setShowGroups]=useState(false);
   const groupName = groupFilter ? (groups.find(g=>g.id===groupFilter)||{}).name : null;
   const sorted = useMemo(()=>[...people].sort((a,b)=>a.name.localeCompare(b.name,"de")),[people]);
   const filtered = useMemo(()=>{
@@ -395,12 +404,23 @@ function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onS
       </header>
       <div className="wrap">
         {groups.length>0 && (
-          <div className="gfilter">
-            <button className={"gchip"+(!groupFilter?" on":"")} onClick={()=>setGroupFilter(null)}>Alle</button>
-            {groups.map(g=>(
-              <button key={g.id} className={"gchip"+(groupFilter===g.id?" on":"")}
-                onClick={()=>setGroupFilter(groupFilter===g.id?null:g.id)}>{g.name}</button>
-            ))}
+          <div className="gfilter-wrap">
+            <button className="gfilter-toggle" onClick={()=>setShowGroups(o=>!o)}>
+              <span>{groupFilter ? groupName : "Nach Gruppe filtern"}</span>
+              <span className="gft-right">
+                {groupFilter && <span className="gft-clear" onClick={(e)=>{ e.stopPropagation(); setGroupFilter(null); }}>×</span>}
+                <span className="chev">{showGroups?"▾":"▸"}</span>
+              </span>
+            </button>
+            {showGroups && (
+              <div className="gfilter">
+                <button className={"gchip"+(!groupFilter?" on":"")} onClick={()=>setGroupFilter(null)}>Alle</button>
+                {groups.map(g=>(
+                  <button key={g.id} className={"gchip"+(groupFilter===g.id?" on":"")}
+                    onClick={()=>setGroupFilter(groupFilter===g.id?null:g.id)}>{g.name}</button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
