@@ -230,9 +230,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.20";
+const VERSION = "1.21";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.21", d:"Bugfix: eine einzelne Person oder Gruppe saß im Netz genau auf dem Mittelpunkt. Sie wird jetzt korrekt daneben platziert."},
   {v:"1.20", d:"Kinder müssen nur an einen Elternteil gehängt werden: über den Partner-Bezug erscheinen sie automatisch bei beiden, im Profil und im Netz."},
   {v:"1.19", d:"Neuer gegenseitiger Bezug Partner / verheiratet mit. Wird im Profil und im Netz angezeigt und beidseitig gesetzt."},
   {v:"1.18", d:"Die bekannt-über-Personenliste ist standardmäßig eingeklappt und öffnet sich erst auf Tippen."},
@@ -1094,7 +1095,7 @@ function StarGraph({people,groups,onBack,onOpen}){
     const ungrouped=topLevel.filter(p=>!(p.groups||[]).length);
     const items=gb.map(x=>({type:"group",g:x.g,count:x.members.length,color:x.color}));
     if(ungrouped.length) items.push({type:"none",count:ungrouped.length,color:"#9a948b"});
-    const R=items.length<=1?0:360;
+    const R=items.length?360:0;
     const P=ringPos(items.length,R);
     const br=Math.max(58,Math.min(108, Math.round(1300/Math.max(6,items.length))));
     title=<div className="graph-title">Dein Netz<span className="graph-hint">Tippe eine Gruppe an, um ihre Leute zu sehen</span></div>;
@@ -1112,7 +1113,7 @@ function StarGraph({people,groups,onBack,onOpen}){
     const isNone=nav.groupId==="__none";
     const g=isNone?null:groups.find(x=>x.id===nav.groupId);
     const members=people.filter(p=>!p.via && p.id!==me.id && (isNone?!(p.groups||[]).length:(p.groups||[]).includes(nav.groupId)));
-    const R=members.length<=1?0:360;
+    const R=members.length?360:0;
     const P=ringPos(members.length,R);
     const fr=Math.max(48,Math.min(80, Math.round(1150/Math.max(7,members.length))));
     title=<div className="graph-title">{isNone?"Ohne Gruppe":(g?g.name:"Gruppe")}<span className="graph-hint">Tippe eine Person an, um weiterzugehen</span></div>;
@@ -1136,7 +1137,7 @@ function StarGraph({people,groups,onBack,onOpen}){
     people.filter(p=>!p.via && (p.groups||[]).some(g=>(center.groups||[]).includes(g))).forEach(p=>addNode(p,"group"));
     if(!center.via) addNode(me,"me");
     const LINE={me:"#9e3b3b",partner:"#8a5a7a",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
-    const R=nodes.length<=1?0:360;
+    const R=nodes.length?360:0;
     const P=ringPos(nodes.length,R);
     const fr=Math.max(48,Math.min(78, Math.round(1150/Math.max(7,nodes.length))));
     title=<div className="graph-title">Netz um {center.name}<span className="graph-hint">Mitte antippen öffnet das Profil</span></div>;
