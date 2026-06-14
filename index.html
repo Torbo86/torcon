@@ -230,9 +230,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.19";
+const VERSION = "1.20";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.20", d:"Kinder müssen nur an einen Elternteil gehängt werden: über den Partner-Bezug erscheinen sie automatisch bei beiden, im Profil und im Netz."},
   {v:"1.19", d:"Neuer gegenseitiger Bezug Partner / verheiratet mit. Wird im Profil und im Netz angezeigt und beidseitig gesetzt."},
   {v:"1.18", d:"Die bekannt-über-Personenliste ist standardmäßig eingeklappt und öffnet sich erst auf Tippen."},
   {v:"1.17", d:"Gruppen-Filter unter der Suche ist jetzt eingeklappt und öffnet sich nur bei Bedarf. Aktiver Filter wird im Schalter angezeigt und lässt sich dort direkt löschen."},
@@ -562,7 +563,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
   const byId = id => people.find(p=>p.id===id);
   const viaPerson = person.via ? byId(person.via) : null;
   const partnerPerson = person.partner ? byId(person.partner) : null;
-  const attached = people.filter(p=>p.via===person.id);
+  const attached = people.filter(p=>p.via===person.id || (person.partner && p.via===person.partner));
   const fields=[
     {lab:"Geburtstag", val: pb ? (fmtBday(pb)
         + (age!=null?` (wird ${nb.turning}, ${nb.days===0?"heute!":daysLabel(nb.days)})`
@@ -1130,8 +1131,8 @@ function StarGraph({people,groups,onBack,onOpen}){
     let nodes=[];
     const addNode=(p,kind)=>{ if(p && p.id!==center.id && !nodes.some(n=>n.person.id===p.id)) nodes.push({person:p,kind}); };
     if(center.partner) addNode(byId(center.partner),"partner");
-    if(center.via) addNode(byId(center.via),"host");
-    people.filter(p=>p.via===center.id).forEach(p=>addNode(p,"attached"));
+    if(center.via){ addNode(byId(center.via),"host"); const hp=byId(center.via); if(hp&&hp.partner) addNode(byId(hp.partner),"host"); }
+    people.filter(p=>p.via===center.id || (center.partner && p.via===center.partner)).forEach(p=>addNode(p,"attached"));
     people.filter(p=>!p.via && (p.groups||[]).some(g=>(center.groups||[]).includes(g))).forEach(p=>addNode(p,"group"));
     if(!center.via) addNode(me,"me");
     const LINE={me:"#9e3b3b",partner:"#8a5a7a",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
