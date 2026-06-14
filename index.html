@@ -230,9 +230,11 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.17";
+const VERSION = "1.19";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.19", d:"Neuer gegenseitiger Bezug Partner / verheiratet mit. Wird im Profil und im Netz angezeigt und beidseitig gesetzt."},
+  {v:"1.18", d:"Die bekannt-über-Personenliste ist standardmäßig eingeklappt und öffnet sich erst auf Tippen."},
   {v:"1.17", d:"Gruppen-Filter unter der Suche ist jetzt eingeklappt und öffnet sich nur bei Bedarf. Aktiver Filter wird im Schalter angezeigt und lässt sich dort direkt löschen."},
   {v:"1.16", d:"Gruppen bearbeiten: in den Einstellungen eine Gruppe antippen, dort umbenennen, Mitglieder per Tippen an- und abhaken und die Gruppe löschen."},
   {v:"1.15", d:"Netz bleibt übersichtlich: oben stehen nur deine Gruppen als Bubbles plus eine Sammelblase für Gruppenlose. Gruppe antippen zeigt ihre Leute. Neue Suche im Netz springt direkt zu einer Person."},
@@ -559,6 +561,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
   const pb=parseBday(person.birthday); const nb=nextBirthday(pb,today); const age=currentAge(pb,today);
   const byId = id => people.find(p=>p.id===id);
   const viaPerson = person.via ? byId(person.via) : null;
+  const partnerPerson = person.partner ? byId(person.partner) : null;
   const attached = people.filter(p=>p.via===person.id);
   const fields=[
     {lab:"Geburtstag", val: pb ? (fmtBday(pb)
@@ -631,6 +634,17 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
           </div>
         )}
 
+        {partnerPerson && (
+          <div className="field">
+            <div className="lab">Partner</div>
+            <div className="chips">
+              <button className="chip" onClick={()=>onOpen(partnerPerson.id)}>
+                <AvaSm person={partnerPerson}/><span>{partnerPerson.name}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {(person.groups||[]).length>0 && groups.length>0 && (
           <div className="field">
             <div className="lab">Gruppen</div>
@@ -655,7 +669,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
         )}
         <button className="btn btn-ghost sm btn-block" style={{marginTop:12}} onClick={()=>onAddAttached(person.id)}>+ Person anhängen, die zu {person.name.split(" ")[0]} gehört</button>
 
-        {fields.length===0 && !person.via && !(person.custom||[]).some(c=>c.label&&c.value) && !(person.groups||[]).length && (
+        {fields.length===0 && !person.via && !person.partner && !(person.custom||[]).some(c=>c.label&&c.value) && !(person.groups||[]).length && (
           <div className="empty" style={{padding:"24px 10px 6px"}}>Noch keine Infos hinterlegt. Tippe auf Bearbeiten.</div>
         )}
 
@@ -698,11 +712,19 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
     .sort((a,b)=>a.name.localeCompare(b.name,"de"));
   const [via,setVia]=useState(person?.via||initialVia||null);
   const [viaQuery,setViaQuery]=useState("");
+  const [showVia,setShowVia]=useState(false);
+  const [partner,setPartner]=useState(person?.partner||null);
+  const [partnerQuery,setPartnerQuery]=useState("");
+  const [showPartner,setShowPartner]=useState(false);
   const groupNameById=(id)=>(groups.find(g=>g.id===id)||{}).name||"";
   const viaMatches=others.filter(p=>{
     const t=viaQuery.trim().toLowerCase(); if(!t) return true;
     const g=(p.groups||[]).map(groupNameById).join(" ");
     return (p.name+" "+g).toLowerCase().includes(t);
+  });
+  const partnerMatches=others.filter(p=>{
+    const t=partnerQuery.trim().toLowerCase(); if(!t) return true;
+    return p.name.toLowerCase().includes(t);
   });
 
   const setCustomField=(i,k,v)=>{ const n=[...custom]; n[i]={...n[i],[k]:v}; setCustom(n); };
@@ -721,7 +743,7 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, isMe:person?.isMe||false,
+      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, partner:partner||null, isMe:person?.isMe||false,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -836,13 +858,15 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
             <span className="via-nm">{(byId(via)||{}).name||"(gelöscht)"}</span>
             <button type="button" className="inline-rm" onClick={()=>setVia(null)}>entfernen</button>
           </div>
-        ) : others.length>0 ? (
+        ) : others.length===0 ? (
+          <div className="hint">Lege erst weitere Personen an.</div>
+        ) : showVia ? (
           <div className="conn-add">
             <input className="conn-search" type="text" value={viaQuery} placeholder="Name oder Gruppe…"
               onChange={e=>setViaQuery(e.target.value)}/>
             <div className="conn-list">
               {viaMatches.map(p=>(
-                <button type="button" className="conn-row" key={p.id} onClick={()=>{ setVia(p.id); setViaQuery(""); }}>
+                <button type="button" className="conn-row" key={p.id} onClick={()=>{ setVia(p.id); setViaQuery(""); setShowVia(false); }}>
                   <span className="conn-nm">{p.name}</span>
                   <span className="conn-plus">wählen</span>
                 </button>
@@ -851,9 +875,38 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
             </div>
           </div>
         ) : (
-          <div className="hint">Lege erst weitere Personen an.</div>
+          <button type="button" className="btn btn-ghost sm btn-block" onClick={()=>setShowVia(true)}>+ Bekannt über festlegen</button>
         )}
         <div className="hint">Optional. Für Randfiguren wie Bekannte von Freunden oder deren Kinder. Sie erscheinen dann bei dieser Person, nicht in deinem Hauptkreis.</div>
+      </div>
+
+      <div className="form-group">
+        <label>Partner / verheiratet mit</label>
+        {partner ? (
+          <div className="via-current">
+            <span className="via-nm">{(byId(partner)||{}).name||"(gelöscht)"}</span>
+            <button type="button" className="inline-rm" onClick={()=>setPartner(null)}>entfernen</button>
+          </div>
+        ) : others.length===0 ? (
+          <div className="hint">Lege erst weitere Personen an.</div>
+        ) : showPartner ? (
+          <div className="conn-add">
+            <input className="conn-search" type="text" value={partnerQuery} placeholder="Name…"
+              onChange={e=>setPartnerQuery(e.target.value)}/>
+            <div className="conn-list">
+              {partnerMatches.map(p=>(
+                <button type="button" className="conn-row" key={p.id} onClick={()=>{ setPartner(p.id); setPartnerQuery(""); setShowPartner(false); }}>
+                  <span className="conn-nm">{p.name}</span>
+                  <span className="conn-plus">wählen</span>
+                </button>
+              ))}
+              {partnerMatches.length===0 && <div className="hint" style={{padding:"8px 4px"}}>Keine passende Person.</div>}
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="btn btn-ghost sm btn-block" onClick={()=>setShowPartner(true)}>+ Partner festlegen</button>
+        )}
+        <div className="hint">Gegenseitig. Wird bei beiden gesetzt und im Netz als Paar gezeigt.</div>
       </div>
 
       <div className="form-group">
@@ -1076,11 +1129,12 @@ function StarGraph({people,groups,onBack,onOpen}){
     const center=byId(nav.personId)||me;
     let nodes=[];
     const addNode=(p,kind)=>{ if(p && p.id!==center.id && !nodes.some(n=>n.person.id===p.id)) nodes.push({person:p,kind}); };
+    if(center.partner) addNode(byId(center.partner),"partner");
     if(center.via) addNode(byId(center.via),"host");
     people.filter(p=>p.via===center.id).forEach(p=>addNode(p,"attached"));
     people.filter(p=>!p.via && (p.groups||[]).some(g=>(center.groups||[]).includes(g))).forEach(p=>addNode(p,"group"));
     if(!center.via) addNode(me,"me");
-    const LINE={me:"#9e3b3b",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
+    const LINE={me:"#9e3b3b",partner:"#8a5a7a",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
     const R=nodes.length<=1?0:360;
     const P=ringPos(nodes.length,R);
     const fr=Math.max(48,Math.min(78, Math.round(1150/Math.max(7,nodes.length))));
@@ -1222,6 +1276,14 @@ function App(){
       let next=exists?prev.map(p=>p.id===person.id?person:p):[...prev,person];
       next=syncConnections(next, person.id, person.connections||[]);
       if(person.isMe) next=next.map(p=>p.id===person.id?p:(p.isMe?{...p,isMe:false}:p));
+      const np=person.partner||null;
+      next=next.map(p=>{
+        if(p.id===person.id) return p;
+        if(np && p.id===np) return {...p, partner:person.id};
+        if(p.partner===person.id && p.id!==np) return {...p, partner:null};
+        if(np && p.partner===np && p.id!==person.id) return {...p, partner:null};
+        return p;
+      });
       return next;
     });
     setView({name:"detail",id:person.id});
@@ -1230,7 +1292,10 @@ function App(){
 
   const deletePerson=(id)=>{
     setPeople(prev=>prev.filter(p=>p.id!==id)
-      .map(p=>({...p,connections:(p.connections||[]).filter(c=>c.personId!==id)})));
+      .map(p=>({...p,
+        connections:(p.connections||[]).filter(c=>c.personId!==id),
+        partner: p.partner===id?null:p.partner,
+        via: p.via===id?null:p.via})));
     setView({name:"list"});
     toast("Gelöscht");
   };
