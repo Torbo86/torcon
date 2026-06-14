@@ -189,6 +189,9 @@
   .me-toggle{display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 13px;
     background:#f0ece5;border:1px solid var(--line);border-radius:11px;font-size:14.5px;font-weight:500;cursor:pointer}
   .me-toggle input{width:auto}
+  .child-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    color:#fff;background:#3f86b8;border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:2px}
+  .chip-child{border-color:#a9cfe3;color:#2f6c91}
   .me-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
     color:#fff;background:var(--accent);border-radius:999px;padding:2px 8px;margin-left:9px;vertical-align:2px}
   .gfilter-wrap{padding:2px 0 10px}
@@ -230,9 +233,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.21";
+const VERSION = "1.22";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.22", d:"Personen lassen sich als Kind markieren. Kinder bekommen im Netz und bei den Chips einen blauen Rand, Erwachsene einen neutralen, plus ein Kind-Label."},
   {v:"1.21", d:"Bugfix: eine einzelne Person oder Gruppe saß im Netz genau auf dem Mittelpunkt. Sie wird jetzt korrekt daneben platziert."},
   {v:"1.20", d:"Kinder müssen nur an einen Elternteil gehängt werden: über den Partner-Bezug erscheinen sie automatisch bei beiden, im Profil und im Netz."},
   {v:"1.19", d:"Neuer gegenseitiger Bezug Partner / verheiratet mit. Wird im Profil und im Netz angezeigt und beidseitig gesetzt."},
@@ -386,7 +390,7 @@ function Kartei({people,groups,today,groupFilter,setGroupFilter,onOpen,onAdd,onS
       <div className="card" key={(extraKey||"")+p.id} onClick={()=>onOpen(p.id)}>
         <Avatar person={p}/>
         <div>
-          <div className="nm">{p.name}{p.isMe && <span className="me-pill">Ich</span>}</div>
+          <div className="nm">{p.name}{p.isMe && <span className="me-pill">Ich</span>}{p.child && <span className="child-pill">Kind</span>}</div>
           {metaParts.length>0 && <div className="meta">{metaParts.join(" · ")}</div>}
         </div>
       </div>
@@ -593,7 +597,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
         <div className="detail-head">
           <span className="ava-hold" {...lp.handlers}><Avatar person={person}/></span>
           <div>
-            <h2>{person.name}{person.isMe && <span className="me-pill">Ich</span>}</h2>
+            <h2>{person.name}{person.isMe && <span className="me-pill">Ich</span>}{person.child && <span className="child-pill">Kind</span>}</h2>
             {person.job && person.job.trim() && <div className="dh-sub">{person.job}</div>}
           </div>
         </div>
@@ -662,7 +666,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
             <div className="lab">Angehängt (z.B. Kinder, Bekannte)</div>
             <div className="chips">
               {attached.map(a=>(
-                <button className="chip" key={a.id} onClick={()=>onOpen(a.id)}>
+                <button className={"chip"+(a.child?" chip-child":"")} key={a.id} onClick={()=>onOpen(a.id)}>
                   <AvaSm person={a}/><span>{a.name}</span>
                 </button>
               ))}
@@ -689,6 +693,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
 function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSave,today}){
   const isNew = !person;
   const [name,setName]=useState(person?.name||"");
+  const [child,setChild]=useState(person?.child||false);
   const [job,setJob]=useState(person?.job||"");
   const [photo,setPhoto]=useState(person?.photo||null);
   const pb=parseBday(person?.birthday);
@@ -745,7 +750,7 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, partner:partner||null, isMe:person?.isMe||false,
+      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, partner:partner||null, child:child||false, isMe:person?.isMe||false,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -789,6 +794,11 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
         <label>Name</label>
         <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Vor- und Nachname"/>
       </div>
+
+      <label className="me-toggle">
+        <input type="checkbox" checked={child} onChange={e=>setChild(e.target.checked)}/>
+        <span>Kind</span>
+      </label>
 
       <div className="form-group">
         <label>Funktion</label>
@@ -1053,6 +1063,7 @@ function Settings({people,ideas,groups,onBack,onImport,onAddIdea,onRemoveIdea,on
 /* ---------- netz / star graph ---------- */
 const REL_COLOR={Familie:"#3f6b5a",Freund:"#9e3b3b",Partner:"#8a5a7a",Kollege:"#4a6280",Sonstige:"#7a756d"};
 const BUBBLE_COLORS=["#3f6b5a","#9e3b3b","#8a5a7a","#4a6280","#a9762f","#5a7d6b","#7a5a9e","#7a756d"];
+const CHILD_RING="#3f86b8", ADULT_RING="#7a756d";
 function StarGraph({people,groups,onBack,onOpen}){
   const me=people.find(p=>p.isMe);
   const byId=id=>people.find(p=>p.id===id);
@@ -1121,7 +1132,7 @@ function StarGraph({people,groups,onBack,onOpen}){
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
           {members.map((m,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={nav.color||"#c9c2b8"} strokeWidth="4" opacity="0.5"/>)}
-          {members.map((m,i)=><Face key={m.id} p={m} x={P[i].x} y={P[i].y} r={fr} ring={nav.color||"#7a756d"} onTap={()=>goPerson(m.id)}/>)}
+          {members.map((m,i)=><Face key={m.id} p={m} x={P[i].x} y={P[i].y} r={fr} ring={m.child?CHILD_RING:ADULT_RING} onTap={()=>goPerson(m.id)}/>)}
           <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={()=>setNav({mode:"home"})}/>
         </svg>
         {members.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Niemand in dieser Gruppe.</div>}
@@ -1145,8 +1156,8 @@ function StarGraph({people,groups,onBack,onOpen}){
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
           {nodes.map((nd,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={LINE[nd.kind]||"#c9c2b8"} strokeWidth={nd.kind==="group"?3:4} opacity="0.55" strokeDasharray={nd.kind==="group"?"3 8":"0"}/>)}
-          {nodes.map((nd,i)=><Face key={nd.person.id} p={nd.person} x={P[i].x} y={P[i].y} r={fr} ring={LINE[nd.kind]} onTap={()=> nd.kind==="me"? setNav({mode:"home"}) : goPerson(nd.person.id)}/>)}
-          <Face p={center} x={cx} y={cy} r={96} ring="#23201d" bold={true} onTap={()=>onOpen(center.id)}/>
+          {nodes.map((nd,i)=><Face key={nd.person.id} p={nd.person} x={P[i].x} y={P[i].y} r={fr} ring={nd.person.child?CHILD_RING:ADULT_RING} onTap={()=> nd.kind==="me"? setNav({mode:"home"}) : goPerson(nd.person.id)}/>)}
+          <Face p={center} x={cx} y={cy} r={96} ring={center.child?CHILD_RING:"#23201d"} bold={true} onTap={()=>onOpen(center.id)}/>
         </svg>
         {nodes.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>{center.name} hat hier noch niemanden.</div>}
       </div>
