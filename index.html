@@ -192,6 +192,7 @@
   .child-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
     color:#fff;background:#3f86b8;border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:2px}
   .chip-child{border-color:#a9cfe3;color:#2f6c91}
+  .chip-role{color:var(--muted);font-size:12px;margin-left:2px}
   .me-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
     color:#fff;background:var(--accent);border-radius:999px;padding:2px 8px;margin-left:9px;vertical-align:2px}
   .gfilter-wrap{padding:2px 0 10px}
@@ -233,9 +234,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.22";
+const VERSION = "1.23";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.23", d:"Die gehört-zu-Angabe hat jetzt ein Rollenfeld (z.B. Tochter, Sohn, Bekannter). Es wird im Profil und in der Angehängt-Liste statt des nackten bekannt-über angezeigt."},
   {v:"1.22", d:"Personen lassen sich als Kind markieren. Kinder bekommen im Netz und bei den Chips einen blauen Rand, Erwachsene einen neutralen, plus ein Kind-Label."},
   {v:"1.21", d:"Bugfix: eine einzelne Person oder Gruppe saß im Netz genau auf dem Mittelpunkt. Sie wird jetzt korrekt daneben platziert."},
   {v:"1.20", d:"Kinder müssen nur an einen Elternteil gehängt werden: über den Partner-Bezug erscheinen sie automatisch bei beiden, im Profil und im Netz."},
@@ -631,7 +633,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
 
         {viaPerson && (
           <div className="field">
-            <div className="lab">Bekannt über</div>
+            <div className="lab">{person.viaRole ? person.viaRole : "Bekannt über"}</div>
             <div className="chips">
               <button className="chip" onClick={()=>onOpen(viaPerson.id)}>
                 <AvaSm person={viaPerson}/><span>{viaPerson.name}</span>
@@ -667,7 +669,7 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
             <div className="chips">
               {attached.map(a=>(
                 <button className={"chip"+(a.child?" chip-child":"")} key={a.id} onClick={()=>onOpen(a.id)}>
-                  <AvaSm person={a}/><span>{a.name}</span>
+                  <AvaSm person={a}/><span>{a.name}</span>{a.viaRole && <span className="chip-role">{a.viaRole}</span>}
                 </button>
               ))}
             </div>
@@ -718,6 +720,7 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
   const others = people.filter(p=>!person || p.id!==person.id)
     .sort((a,b)=>a.name.localeCompare(b.name,"de"));
   const [via,setVia]=useState(person?.via||initialVia||null);
+  const [viaRole,setViaRole]=useState(person?.viaRole||"");
   const [viaQuery,setViaQuery]=useState("");
   const [showVia,setShowVia]=useState(false);
   const [partner,setPartner]=useState(person?.partner||null);
@@ -750,7 +753,7 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, partner:partner||null, child:child||false, isMe:person?.isMe||false,
+      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, viaRole:via?viaRole.trim():"", partner:partner||null, child:child||false, isMe:person?.isMe||false,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -866,10 +869,13 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
       <div className="form-group">
         <label>Bekannt über / gehört zu</label>
         {via ? (
-          <div className="via-current">
-            <span className="via-nm">{(byId(via)||{}).name||"(gelöscht)"}</span>
-            <button type="button" className="inline-rm" onClick={()=>setVia(null)}>entfernen</button>
-          </div>
+          <>
+            <div className="via-current">
+              <span className="via-nm">{(byId(via)||{}).name||"(gelöscht)"}</span>
+              <button type="button" className="inline-rm" onClick={()=>{ setVia(null); setViaRole(""); }}>entfernen</button>
+            </div>
+            <input type="text" style={{marginTop:8}} value={viaRole} onChange={e=>setViaRole(e.target.value)} placeholder="als … (z.B. Tochter, Sohn, Bekannter)"/>
+          </>
         ) : others.length===0 ? (
           <div className="hint">Lege erst weitere Personen an.</div>
         ) : showVia ? (
