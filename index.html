@@ -234,9 +234,13 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.27";
+const VERSION = "1.31";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.31", d:"Manuelle Geschwister verbinden sich jetzt transitiv: fügst du jemanden zu einer Geschwister-Gruppe hinzu, wird er mit allen anderen darin verknüpft. Entfernen kappt nur die eine Verbindung und klebt nichts von selbst wieder zusammen."},
+  {v:"1.30", d:"Geschwister lassen sich jetzt auch direkt verknüpfen (im Bearbeiten-Feld Geschwister), unabhängig davon ob die Eltern erfasst sind. Gegenseitig und mehrfach möglich. Wird mit den automatisch erkannten Geschwistern zusammengeführt."},
+  {v:"1.29", d:"Geschwister hängen nicht mehr an der Kind-Markierung. Es zählt die Eltern-Rolle: wer als Sohn, Tochter oder Kind an denselben Eltern hängt, ist Geschwister, auch Erwachsene. Die Kind-Markierung bleibt rein optisch."},
+  {v:"1.28", d:"Geschwister werden automatisch erkannt: als Kind markierte Personen mit denselben Eltern erscheinen im Profil unter Geschwister und im Netz als eigene Knoten. Kein manuelles Verknüpfen nötig."},
   {v:"1.27", d:"Im Profil eines angehängten Kindes wird jetzt auch der zweite Elternteil (Partner des Elternteils) angezeigt, nicht nur der, an dem es hängt."},
   {v:"1.26", d:"Der Geräte-Zurück-Knopf schließt die App nicht mehr sofort, sondern geht eine Ebene hoch (im Netz, von Detail oder Einstellungen zur Liste). Erst auf der Startliste schließt ein zweites Zurück die App."},
   {v:"1.25", d:"Gruppen lassen sich anderen Gruppen unterordnen (Kreise in Kreisen). Die Startebene zeigt nur die obersten Kreise, das Öffnen zeigt Unterkreise plus direkte Leute. Neuer Zurück-Knopf im Netz geht eine Ebene hoch, zu mir springt ganz nach oben."},
@@ -574,6 +578,12 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
   const byId = id => people.find(p=>p.id===id);
   const viaPerson = person.via ? byId(person.via) : null;
   const viaPartner = viaPerson && viaPerson.partner ? byId(viaPerson.partner) : null;
+  const isChildOf = p => !!(p.via && (/sohn|tochter|kind/i.test(p.viaRole||"") || p.child));
+  const parentIds = person.via ? [person.via, viaPerson && viaPerson.partner].filter(Boolean) : [];
+  const derivedSibs = isChildOf(person) ? people.filter(p=>p.id!==person.id && isChildOf(p) && parentIds.includes(p.via)) : [];
+  const manualSibs = (person.siblings||[]).map(id=>byId(id)).filter(Boolean);
+  const _sibMap={}; [...derivedSibs,...manualSibs].forEach(s=>{_sibMap[s.id]=s;});
+  const siblings = Object.values(_sibMap);
   const partnerPerson = person.partner ? byId(person.partner) : null;
   const attached = people.filter(p=>p.via===person.id || (person.partner && p.via===person.partner));
   const fields=[
@@ -648,6 +658,19 @@ function Detail({person,people,groups,onBack,onEdit,onOpen,onOpenGroup,onAddAtta
                   <AvaSm person={viaPartner}/><span>{viaPartner.name}</span>
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {siblings.length>0 && (
+          <div className="field">
+            <div className="lab">Geschwister</div>
+            <div className="chips">
+              {siblings.map(s=>(
+                <button className={"chip"+(s.child?" chip-child":"")} key={s.id} onClick={()=>onOpen(s.id)}>
+                  <AvaSm person={s}/><span>{s.name}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -736,6 +759,9 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
   const [partner,setPartner]=useState(person?.partner||null);
   const [partnerQuery,setPartnerQuery]=useState("");
   const [showPartner,setShowPartner]=useState(false);
+  const [sibs,setSibs]=useState(person?.siblings||[]);
+  const [sibQuery,setSibQuery]=useState("");
+  const [showSib,setShowSib]=useState(false);
   const groupNameById=(id)=>(groups.find(g=>g.id===id)||{}).name||"";
   const viaMatches=others.filter(p=>{
     const t=viaQuery.trim().toLowerCase(); if(!t) return true;
@@ -744,6 +770,11 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
   });
   const partnerMatches=others.filter(p=>{
     const t=partnerQuery.trim().toLowerCase(); if(!t) return true;
+    return p.name.toLowerCase().includes(t);
+  });
+  const sibMatches=others.filter(p=>{
+    if(sibs.includes(p.id)) return false;
+    const t=sibQuery.trim().toLowerCase(); if(!t) return true;
     return p.name.toLowerCase().includes(t);
   });
 
@@ -763,7 +794,7 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
       id:person?.id||uid(),
       name:name.trim(), job:job.trim(), photo, birthday, metWhere:metWhere.trim(),
       color:color.trim(), gifts:gifts.trim(), notes:notes.trim(),
-      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, viaRole:via?viaRole.trim():"", partner:partner||null, child:child||false, isMe:person?.isMe||false,
+      custom:cleanCustom, secret:cleanSecret, connections:person?.connections||[], groups:pGroups, via:via||null, viaRole:via?viaRole.trim():"", partner:partner||null, siblings:sibs, child:child||false, isMe:person?.isMe||false,
       created:person?.created||Date.now(), updated:Date.now(),
     });
   };
@@ -935,6 +966,38 @@ function EditPerson({person,people,groups,initialVia,onCancel,onCreateGroup,onSa
           <button type="button" className="btn btn-ghost sm btn-block" onClick={()=>setShowPartner(true)}>+ Partner festlegen</button>
         )}
         <div className="hint">Gegenseitig. Wird bei beiden gesetzt und im Netz als Paar gezeigt.</div>
+      </div>
+
+      <div className="form-group">
+        <label>Geschwister</label>
+        {sibs.length>0 && (
+          <div className="chips" style={{marginBottom:8}}>
+            {sibs.map(id=>(
+              <button type="button" className="chip" key={id} onClick={()=>setSibs(sibs.filter(x=>x!==id))}>
+                <span>{(byId(id)||{}).name||"(gelöscht)"}</span><span style={{marginLeft:6,opacity:0.55}}>×</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {others.length===0 ? (
+          <div className="hint">Lege erst weitere Personen an.</div>
+        ) : showSib ? (
+          <div className="conn-add">
+            <input className="conn-search" type="text" value={sibQuery} placeholder="Name…" onChange={e=>setSibQuery(e.target.value)}/>
+            <div className="conn-list">
+              {sibMatches.map(p=>(
+                <button type="button" className="conn-row" key={p.id} onClick={()=>{ setSibs(Array.from(new Set([...sibs,p.id]))); setSibQuery(""); }}>
+                  <span className="conn-nm">{p.name}</span><span className="conn-plus">+</span>
+                </button>
+              ))}
+              {sibMatches.length===0 && <div className="hint" style={{padding:"8px 4px"}}>Keine passende Person.</div>}
+            </div>
+            <button type="button" className="btn btn-ghost sm btn-block" style={{marginTop:6}} onClick={()=>setShowSib(false)}>fertig</button>
+          </div>
+        ) : (
+          <button type="button" className="btn btn-ghost sm btn-block" onClick={()=>setShowSib(true)}>+ Geschwister hinzufügen</button>
+        )}
+        <div className="hint">Gegenseitig, mehrere möglich. Vor allem nützlich, wenn die Eltern nicht erfasst sind. Sind die Eltern angelegt, erkennt die App Geschwister ohnehin selbst.</div>
       </div>
 
       <div className="form-group">
@@ -1182,10 +1245,12 @@ function StarGraph({people,groups,onBack,onOpen,backHandle}){
     const addNode=(p,kind)=>{ if(p && p.id!==center.id && !nodes.some(n=>n.person.id===p.id)) nodes.push({person:p,kind}); };
     if(center.partner) addNode(byId(center.partner),"partner");
     if(center.via){ addNode(byId(center.via),"host"); const hp=byId(center.via); if(hp&&hp.partner) addNode(byId(hp.partner),"host"); }
+    { const isCh=p=>!!(p.via && (/sohn|tochter|kind/i.test(p.viaRole||"") || p.child)); if(isCh(center)){ const par=[center.via,(byId(center.via)||{}).partner].filter(Boolean); people.filter(p=>p.id!==center.id && isCh(p) && par.includes(p.via)).forEach(p=>addNode(p,"sibling")); } }
+    (center.siblings||[]).forEach(id=>{ const s=byId(id); if(s) addNode(s,"sibling"); });
     people.filter(p=>p.via===center.id || (center.partner && p.via===center.partner)).forEach(p=>addNode(p,"attached"));
     people.filter(p=>!p.via && (p.groups||[]).some(g=>(center.groups||[]).includes(g))).forEach(p=>addNode(p,"group"));
     if(!center.via) addNode(me,"me");
-    const LINE={me:"#9e3b3b",partner:"#8a5a7a",attached:"#7a756d",host:"#7a756d",group:"#b0a99e"};
+    const LINE={me:"#9e3b3b",partner:"#8a5a7a",attached:"#7a756d",host:"#7a756d",group:"#b0a99e",sibling:"#5a8f7a"};
     const R=nodes.length?360:0;
     const P=ringPos(nodes.length,R);
     const fr=Math.max(48,Math.min(78, Math.round(1150/Math.max(7,nodes.length))));
@@ -1373,6 +1438,19 @@ function App(){
         if(np && p.partner===np && p.id!==person.id) return {...p, partner:null};
         return p;
       });
+      const _oldSib=(prev.find(p=>p.id===person.id)||{}).siblings||[];
+      const _newSib=person.siblings||[];
+      const _added=_newSib.filter(x=>!_oldSib.includes(x));
+      const _removed=_oldSib.filter(x=>!_newSib.includes(x));
+      const _addSet=new Set(_added);
+      next=next.map(p=>{
+        if(p.id===person.id) return p;
+        let sib=p.siblings||[]; let changed=false;
+        if(_removed.includes(p.id)){ sib=sib.filter(x=>x!==person.id); changed=true; }
+        if(_addSet.has(p.id)){ sib=[...new Set([...sib, person.id, ..._newSib.filter(x=>x!==p.id)])]; changed=true; }
+        else if(_newSib.includes(p.id)){ sib=[...new Set([...sib, person.id, ..._added.filter(x=>x!==p.id)])]; changed=true; }
+        return changed ? {...p, siblings:sib} : p;
+      });
       return next;
     });
     setView({name:"detail",id:person.id});
@@ -1384,6 +1462,7 @@ function App(){
       .map(p=>({...p,
         connections:(p.connections||[]).filter(c=>c.personId!==id),
         partner: p.partner===id?null:p.partner,
+        siblings:(p.siblings||[]).filter(x=>x!==id),
         via: p.via===id?null:p.via})));
     setView({name:"list"});
     toast("Gelöscht");
