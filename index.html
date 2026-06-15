@@ -234,9 +234,10 @@
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 const {useState,useEffect,useRef,useMemo} = React;
-const VERSION = "1.31";
+const VERSION = "1.32";
 const STORE_KEY = "torcon_v1";
 const CHANGELOG = [
+  {v:"1.32", d:"Gruppen können ein Hintergrundbild bekommen (im Gruppen-Editor wählbar). Das Bild füllt die Gruppen-Bubble im Netz, mit farbigem Schleier, damit die Zahl lesbar bleibt."},
   {v:"1.31", d:"Manuelle Geschwister verbinden sich jetzt transitiv: fügst du jemanden zu einer Geschwister-Gruppe hinzu, wird er mit allen anderen darin verknüpft. Entfernen kappt nur die eine Verbindung und klebt nichts von selbst wieder zusammen."},
   {v:"1.30", d:"Geschwister lassen sich jetzt auch direkt verknüpfen (im Bearbeiten-Feld Geschwister), unabhängig davon ob die Eltern erfasst sind. Gegenseitig und mehrfach möglich. Wird mit den automatisch erkannten Geschwistern zusammengeführt."},
   {v:"1.29", d:"Geschwister hängen nicht mehr an der Kind-Markierung. Es zählt die Eltern-Rolle: wer als Sohn, Tochter oder Kind an denselben Eltern hängt, ist Geschwister, auch Erwachsene. Die Kind-Markierung bleibt rein optisch."},
@@ -1173,14 +1174,25 @@ function StarGraph({people,groups,onBack,onOpen,backHandle}){
       </g>
     );
   };
-  const Bubble=({label,count,x,y,r,color,onTap})=>(
+  const Bubble=({label,count,x,y,r,color,photo,onTap})=>{
+    const bid="bcl_"+Math.round(x)+"_"+Math.round(y);
+    return (
     <g onClick={onTap} style={{cursor:"pointer"}}>
-      <circle cx={x} cy={y} r={r} fill={color} opacity="0.16"/>
-      <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth="6"/>
-      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontFamily="sans-serif" fontWeight="700" fontSize={r*0.72} fill={color}>{count}</text>
+      {photo ? (<g>
+        <clipPath id={bid}><circle cx={x} cy={y} r={r}/></clipPath>
+        <image href={photo} xlinkHref={photo} x={x-r} y={y-r} width={r*2} height={r*2} clipPath={"url(#"+bid+")"} preserveAspectRatio="xMidYMid slice"/>
+        <circle cx={x} cy={y} r={r} fill={color} opacity="0.5"/>
+        <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth="6"/>
+        <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontFamily="sans-serif" fontWeight="700" fontSize={r*0.72} fill="#fff">{count}</text>
+      </g>) : (<g>
+        <circle cx={x} cy={y} r={r} fill={color} opacity="0.16"/>
+        <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth="6"/>
+        <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontFamily="sans-serif" fontWeight="700" fontSize={r*0.72} fill={color}>{count}</text>
+      </g>)}
       <text x={x} y={y+r+32} textAnchor="middle" fontSize="29" fontFamily="sans-serif" fill="#23201d">{label.length>16?label.slice(0,15)+"…":label}</text>
     </g>
-  );
+    );
+  };
 
   let inner=null, title=null;
   if(!me){
@@ -1202,7 +1214,7 @@ function StarGraph({people,groups,onBack,onOpen,backHandle}){
       <div className="graph-stage">
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
           {items.map((it,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={it.color} strokeWidth="4" opacity="0.4"/>)}
-          {items.map((it,i)=><Bubble key={i} label={it.type==="none"?"Ohne Gruppe":it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} onTap={()=>push({mode:"group",groupId:it.type==="none"?"__none":it.g.id,color:it.color})}/>)}
+          {items.map((it,i)=><Bubble key={i} label={it.type==="none"?"Ohne Gruppe":it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} photo={it.g&&it.g.photo} onTap={()=>push({mode:"group",groupId:it.type==="none"?"__none":it.g.id,color:it.color})}/>)}
           <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={()=>onOpen(me.id)}/>
         </svg>
         {items.length===0 && <div className="hint" style={{textAlign:"center",padding:"0 24px 24px"}}>Noch keine Gruppen mit Leuten. Ordne Personen beim Bearbeiten Gruppen zu.</div>}
@@ -1231,7 +1243,7 @@ function StarGraph({people,groups,onBack,onOpen,backHandle}){
         <svg viewBox={"0 0 "+VB+" "+VB} className="graph-svg">
           {items.map((it,i)=><line key={"l"+i} x1={cx} y1={cy} x2={P[i].x} y2={P[i].y} stroke={it.type==="group"?it.color:(nav.color||"#c9c2b8")} strokeWidth="4" opacity="0.5"/>)}
           {items.map((it,i)=> it.type==="group"
-            ? <Bubble key={"b"+it.g.id} label={it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} onTap={()=>push({mode:"group",groupId:it.g.id,color:it.color})}/>
+            ? <Bubble key={"b"+it.g.id} label={it.g.name} count={it.count} x={P[i].x} y={P[i].y} r={br} color={it.color} photo={it.g.photo} onTap={()=>push({mode:"group",groupId:it.g.id,color:it.color})}/>
             : <Face key={it.p.id} p={it.p} x={P[i].x} y={P[i].y} r={fr} ring={it.p.child?CHILD_RING:ADULT_RING} onTap={()=>goPerson(it.p.id)}/>
           )}
           <Face p={me} x={cx} y={cy} r={96} ring="#9e3b3b" bold={true} onTap={goHome}/>
@@ -1295,8 +1307,11 @@ function StarGraph({people,groups,onBack,onOpen,backHandle}){
   );
 }
 
-function GroupEdit({group,groups,people,onBack,onRename,onSetParent,onToggleMember,onDelete}){
+function GroupEdit({group,groups,people,onBack,onRename,onSetParent,onSetPhoto,onToggleMember,onDelete}){
   const [q,setQ]=useState("");
+  const [cropSrc,setCropSrc]=useState(null);
+  const fileRef=useRef();
+  const onFile=(e)=>{ const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>setCropSrc(ev.target.result); r.readAsDataURL(f); } e.target.value=""; };
   if(!group) return (
     <div className="wrap"><div className="navbar"><button className="back" onClick={onBack}>‹ Einstellungen</button></div>
       <div className="empty">Gruppe nicht gefunden.</div></div>
@@ -1322,6 +1337,15 @@ function GroupEdit({group,groups,people,onBack,onRename,onSetParent,onToggleMemb
           {parentOptions.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
       </div>
+      <div className="form-group">
+        <label>Hintergrundbild</label>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:64,height:64,borderRadius:"50%",overflow:"hidden",background:"#efeae3",flexShrink:0,backgroundImage:group.photo?`url("${group.photo}")`:"none",backgroundSize:"cover",backgroundPosition:"center"}}></div>
+          <button type="button" className="btn btn-ghost sm" onClick={()=>fileRef.current.click()}>{group.photo?"Ändern":"Bild wählen"}</button>
+          {group.photo && <button type="button" className="btn btn-ghost sm" onClick={()=>onSetPhoto(group.id,null)}>Entfernen</button>}
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={onFile}/>
+      </div>
       <div className="sect-label" style={{marginTop:18}}>Mitglieder ({memberCount})</div>
       <input className="search" style={{marginTop:4}} value={q} onChange={e=>setQ(e.target.value)} placeholder="Person suchen…"/>
       <div style={{marginTop:10}}>
@@ -1337,6 +1361,7 @@ function GroupEdit({group,groups,people,onBack,onRename,onSetParent,onToggleMemb
       </div>
       <div className="divider"></div>
       <button className="btn btn-danger btn-block" onClick={()=>{ if(confirm(`Gruppe „${group.name}" löschen? Personen bleiben erhalten.`)) onDelete(group.id); }}>Gruppe löschen</button>
+      {cropSrc && <ImageCropper src={cropSrc} onCancel={()=>setCropSrc(null)} onDone={d=>{ onSetPhoto(group.id,d); setCropSrc(null); }}/>}
     </div>
   );
 }
@@ -1408,6 +1433,7 @@ function App(){
       return prev.filter(x=>x.id!==id).map(x=>x.parent===id?{...x,parent:gp}:x); });
     setPeople(prev=>prev.map(p=>({...p,groups:(p.groups||[]).filter(x=>x!==id)}))); };
   const setGroupParent=(id,parentId)=>setGroups(prev=>prev.map(g=>g.id===id?{...g,parent:parentId||null}:g));
+  const setGroupPhoto=(id,photo)=>setGroups(prev=>prev.map(g=>g.id===id?{...g,photo:photo||null}:g));
   const setMe=(id)=>setPeople(prev=>prev.map(p=>({...p,isMe:p.id===id})));
   const toggleGroupMember=(personId,groupId,on)=>setPeople(prev=>prev.map(p=> p.id!==personId?p:{...p,groups: on?Array.from(new Set([...(p.groups||[]),groupId])):(p.groups||[]).filter(x=>x!==groupId)}));
 
@@ -1520,7 +1546,7 @@ function App(){
   else if(view.name==="settings")
     body=<Settings people={people} ideas={ideas} groups={groups} onBack={()=>setView({name:"list"})} onImport={importPeople} onAddIdea={addIdea} onRemoveIdea={removeIdea} onToggleIdea={toggleIdea} onEditGroup={(id)=>setView({name:"groupEdit",id})} onSetMe={setMe} toast={toast}/>;
   else if(view.name==="groupEdit")
-    body=<GroupEdit group={groups.find(g=>g.id===view.id)} groups={groups} people={people} onBack={()=>setView({name:"settings"})} onRename={renameGroup} onSetParent={setGroupParent} onToggleMember={toggleGroupMember} onDelete={(id)=>{ deleteGroup(id); setView({name:"settings"}); }}/>;
+    body=<GroupEdit group={groups.find(g=>g.id===view.id)} groups={groups} people={people} onBack={()=>setView({name:"settings"})} onRename={renameGroup} onSetParent={setGroupParent} onSetPhoto={setGroupPhoto} onToggleMember={toggleGroupMember} onDelete={(id)=>{ deleteGroup(id); setView({name:"settings"}); }}/>;
 
   return <>
     {updateVer && (
